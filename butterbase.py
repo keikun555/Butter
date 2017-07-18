@@ -78,9 +78,9 @@ class Butter(object):
     # TODO: finish commenting
     # TODO: tidy up class
     # TODO: clean up superfluous code
-    def __init__(self, btype=None, cutoff=None, cutoff1=None, cutoff2=None, rolloff=None, sampling=None):
+    def __init__(self, btype="lowpass", cutoff=None, cutoff1=None, cutoff2=None, rolloff=None, sampling=None):
         """
-        @param btype string type of filter
+        @param btype string type of filter, default lowpass
             lowpass
             highpass
             bandpass
