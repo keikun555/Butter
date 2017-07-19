@@ -4,7 +4,7 @@ Kei Imada
 Testing the test data
 """
 
-from butterbase import Butter
+from filters.butterbase import Butter
 import numpy as np
 from math import *
 

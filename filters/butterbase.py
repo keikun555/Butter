@@ -78,9 +78,9 @@ class Butter(object):
     # TODO: finish commenting
     # TODO: tidy up class
     # TODO: clean up superfluous code
-    def __init__(self, btype=None, cutoff=None, cutoff1=None, cutoff2=None, rolloff=None, sampling=None):
+    def __init__(self, btype="lowpass", cutoff=None, cutoff1=None, cutoff2=None, rolloff=None, sampling=None):
         """
-        @param btype string type of filter
+        @param btype string type of filter, default lowpass
             lowpass
             highpass
             bandpass
@@ -144,10 +144,8 @@ class Butter(object):
         ws = 2 * wp
         d1 = B / 100.0
         d2 = 10**(math.log10(d1) - (A / 20.0))
-        self.N = int(math.ceil((math.log10(((1 / (d1**2)) - 1) /
-                                           ((1 / (d2**2)) - 1))) / (2 * math.log10(wp / ws))))
-        if self.N % 2 == 1:
-            self.N += 1
+        self.N = (math.log10(((1 / (d1**2)) - 1) /
+                                           ((1 / (d2**2)) - 1))) / (2 * math.log10(wp / ws))
         self.wc = 10**(math.log10(wp) - (1.0 / (2 * self.N))
                        * math.log10((1 / (d1**2)) - 1))
         self.fs = fs
@@ -155,6 +153,9 @@ class Butter(object):
         self.fc = Oc
         self.f1 = f1
         self.f2 = f2
+        self.N = int(math.ceil(self.N))
+        if self.N % 2 == 1:
+            self.N += 1
 
         # to store the filtered data
         self.output = []
@@ -290,7 +291,7 @@ class Butter(object):
         """
         basic = {}
         basic["a"] = lambda k: self.wc * \
-            math.sin((float(2 * k - 1) / (2.0 * self.N)) * math.pi)
+            math.sin((float(2.0 * k - 1) / (2.0 * self.N)) * math.pi)
         basic["B"] = lambda k: 1 + basic["a"](k) + ((self.wc**2) / 4.0)
         basic["A"] = lambda k: (self.wc**2) / (4.0 * basic["B"](k))
         basic["a1"] = lambda k: 2
@@ -419,7 +420,7 @@ class Butter(object):
         vp = 2 * math.atan(self.wc / 2.0)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
         k = math.tan(vp / 2.0) * math.tan((Op2 - Op1) / 2.0)
-        A = 2 * alpha / (k + 1)
+        A = 2 * alpha * k / (k + 1)
         B = (1 - k) / (1 + k)
 
         def C(k): return 1 + basic["b1"](k) * \
