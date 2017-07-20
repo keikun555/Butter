@@ -253,11 +253,11 @@ class Butter(object):
         for i in range(2, -1, -1):
             stacklist[k].put_nowait(yn[i])
         stacklist[k].put_nowait(newyn)
-        print m, newyn
+        # print m, newyn
         # base case
         if k >= self.N / 2:
             # return if k==self.N/2
-            raw_input()
+            # raw_input()
             return newyn
         # recurse if not at end
         return self._filterHelper(stacklist, m=m + 1)
