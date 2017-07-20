@@ -11,7 +11,7 @@ import cmath
 import math
 
 def main():
-    T = "highpass"
+    T = "notch"
     inf = open("test/data01r.txt", "r")
     L = map(lambda k: float(k), inf.readlines())
     pre = map(lambda k: math.sqrt(k.real**2 + k.imag**2), fft.rfft(L))

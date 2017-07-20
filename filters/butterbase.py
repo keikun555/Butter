@@ -144,8 +144,10 @@ class Butter(object):
         ws = 2 * wp
         d1 = B / 100.0
         d2 = 10**(math.log10(d1) - (A / 20.0))
-        self.N = (math.log10(((1 / (d1**2)) - 1) /
-                                           ((1 / (d2**2)) - 1))) / (2 * math.log10(wp / ws))
+        self.N = int(math.ceil((math.log10(((1 / (d1**2)) - 1) /
+                                           ((1 / (d2**2)) - 1))) / (2 * math.log10(wp / ws))))
+        if self.N % 2 == 1:
+            self.N += 1
         self.wc = 10**(math.log10(wp) - (1.0 / (2 * self.N))
                        * math.log10((1 / (d1**2)) - 1))
         self.fs = fs
@@ -153,9 +155,6 @@ class Butter(object):
         self.fc = Oc
         self.f1 = f1
         self.f2 = f2
-        self.N = int(math.ceil(self.N))
-        if self.N % 2 == 1:
-            self.N += 1
 
         # to store the filtered data
         self.output = []
@@ -164,6 +163,11 @@ class Butter(object):
         # list of stacks used in calculation of filter
         self.stacklist = [Queue.LifoQueue(maxsize=5)
                           for i in range(self.N / 2 + 1)]
+
+        # print "d1=%f\td2=%f" % (d1, d2)
+        # print "N=%d" % self.N
+        # print "wc=%fpi" % (self.wc/math.pi)
+
         # set variables for desired filter
         self.filter = {
             "lowpass": self._lowpassFilterVariables,
@@ -174,6 +178,7 @@ class Butter(object):
         }[btype]()
         # for i in range(1,9,1):
         #     print("A%d: %.4f\tb1%d: %.4f\tb2%d: %.4f" % (i, self.filter["A"](i), i, self.filter["b1"](i), i, self.filter["b2"](i)))
+        #exit(0)
 
     def getOutput(self):
         """
@@ -311,11 +316,18 @@ class Butter(object):
         @return dictionary key:string variable value: lambda k
         """
         basic = self._basicFilterVariables()
+        # for i in range(1,9,1):
+        #     print("A%d: %.4f\tb1%d: %.4f\tb2%d: %.4f" % (i, basic["A"](i), i, basic["b1"](i), i, basic["b2"](i)))
+
         Op = 2 * math.atan(math.pi * self.fc / self.fs)
         vp = 2 * math.atan(self.wc / 2.0)
 
         alpha = math.sin((vp - Op) / 2.0) / \
             math.sin((vp + Op) / 2.0)
+        # print math.sin((vp - Op) / 2.0), math.sin((vp + Op) / 2.0)
+        #
+        # print "Op=%f\tvp=%f" % (Op, vp)
+        # print "alpha=%f" % alpha
 
         def C(k): return 1 - basic["b1"](k) * \
             alpha + basic["b2"](k) * (alpha**2)
@@ -381,15 +393,16 @@ class Butter(object):
         B = (k - 1) / (k + 1)
         # print(Op1, Op2, self.wc, vp, alpha, k, A, B)
         # raw_input()
-        # print A, B
-        # a = math.sin((vp - Op2) / 2.0) / \
-        #     math.sin((vp + Op2) / 2.0)
-        # b = -(math.cos((vp + Op1) / (2.0))) / \
-        #     (math.cos((vp - Op1) / (2.0)))
-        # A = a - b
-        # B = -a * b
-        # print A, B
-        # raw_input()
+        print A, B
+        a = math.sin((vp - Op2) / 2.0) / \
+            math.sin((vp + Op2) / 2.0)
+        b = -(math.cos((vp + Op1) / (2.0))) / \
+            (math.cos((vp - Op1) / (2.0)))
+        A = a - b
+        B = -a * b
+        print A, B
+        exit(0)
+        raw_input()
 
 
         def C(k): return 1 - basic["b1"](k) * B + basic["b2"](k) * (B**2)
