@@ -176,8 +176,8 @@ class Butter(object):
             "notch": self._notchFilterVariables,
             "bandstop": self._bandstopFilterVariables
         }[btype]()
-        # for i in range(1,9,1):
-        #     print("A%d: %.4f\tb1%d: %.4f\tb2%d: %.4f" % (i, self.filter["A"](i), i, self.filter["b1"](i), i, self.filter["b2"](i)))
+        for i in range(1,9,1):
+            print("A%d: %.4f\tb1%d: %.4f\tb2%d: %.4f" % (i, self.filter["A"](i), i, self.filter["b1"](i), i, self.filter["b2"](i)))
         #exit(0)
 
     def getOutput(self):
@@ -253,9 +253,11 @@ class Butter(object):
         for i in range(2, -1, -1):
             stacklist[k].put_nowait(yn[i])
         stacklist[k].put_nowait(newyn)
+        print m, newyn
         # base case
         if k >= self.N / 2:
             # return if k==self.N/2
+            raw_input()
             return newyn
         # recurse if not at end
         return self._filterHelper(stacklist, m=m + 1)
@@ -393,16 +395,12 @@ class Butter(object):
         B = (k - 1) / (k + 1)
         # print(Op1, Op2, self.wc, vp, alpha, k, A, B)
         # raw_input()
-        print A, B
-        a = math.sin((vp - Op2) / 2.0) / \
-            math.sin((vp + Op2) / 2.0)
-        b = -(math.cos((vp + Op1) / (2.0))) / \
-            (math.cos((vp - Op1) / (2.0)))
-        A = a - b
-        B = -a * b
-        print A, B
-        exit(0)
-        raw_input()
+        # a = math.sin((vp - Op2) / 2.0) / \
+        #     math.sin((vp + Op2) / 2.0)
+        # b = -(math.cos((vp + Op1) / (2.0))) / \
+        #     (math.cos((vp - Op1) / c(2.0)))
+        # A = a - b
+        # B = -a * b
 
 
         def C(k): return 1 - basic["b1"](k) * B + basic["b2"](k) * (B**2)
@@ -433,7 +431,7 @@ class Butter(object):
         vp = 2 * math.atan(self.wc / 2.0)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
         k = math.tan(vp / 2.0) * math.tan((Op2 - Op1) / 2.0)
-        A = 2 * alpha * k / (k + 1)
+        A = 2 * alpha / (k + 1)
         B = (1 - k) / (1 + k)
 
         def C(k): return 1 + basic["b1"](k) * \
