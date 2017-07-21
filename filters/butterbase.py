@@ -178,7 +178,7 @@ class Butter(object):
         }[btype]()
         for i in range(1,9,1):
             print("A%d: %.4f\tb1%d: %.4f\tb2%d: %.4f" % (i, self.filter["A"](i), i, self.filter["b1"](i), i, self.filter["b2"](i)))
-        #exit(0)
+        exit(0)
 
     def getOutput(self):
         """
