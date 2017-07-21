@@ -507,11 +507,11 @@ class Butter(object):
         x = 1.0
         f1 = (1.0 - (x / 100)) * self.fc
         f2 = (1.0 + (x / 100)) * self.fc
-        Op1 = 2 * (math.pi * f1 / self.fs)
-        Op2 = 2 * (math.pi * f2 / self.fs)
-        vp = 2 * (self.wc / 2.0)
+        Op1 = 2 * math.atan(math.pi * f1 / self.fs)
+        Op2 = 2 * math.atan(math.pi * f2 / self.fs)
+        vp = 2 * math.atan(self.wc / 2.0)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
-        k = (vp / 2.0) * math.tan((Op2 - Op1) / 2.0)
+        k = math.tan(vp / 2.0) * math.tan((Op2 - Op1) / 2.0)
         A = 2 * alpha / (k + 1)
         B = (1 - k) / (1 + k)
 
