@@ -1,2 +1,0 @@
-gnumake cleanthis -f filter01.mf depend install
-

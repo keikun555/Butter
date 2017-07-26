@@ -5,80 +5,14 @@ Base code for butterworth filter
 """
 
 import math
-import Queue
 import array
-
-
-def lowpass(data, sampling, cutoff, rolloff):
-    """
-    Mutably performs a lowpass butterworth filter on data
-    Default: data=[], sampling=1.0, cutoff=None, rolloff=None
-    @param data     - list of floats, samples
-    @param sampling - float, sampling frequency in seconds
-    @param type     - string, bandpass, highpass, or notch
-    @param cutoff   - float, cutoff frequency used in bandpass/highpass filters
-    @param rolloff  - float, rolloff frequency used in bandpass/highpass filters
-    """
-    raise NotImplementedError("filters.butterbase.lowpass: not implemented")
-
-
-def highpass(data, sampling, cutoff, rolloff):
-    """
-    Mutably performs a highpass butterworth filter on data
-    Default: data=[], sampling=1.0, cutoff=None, rolloff=None
-    @param data     - list of floats, samples
-    @param sampling - float, sampling frequency in seconds
-    @param type     - string, bandpass, highpass, or notch
-    @param cutoff   - float, cutoff frequency used in bandpass/highpass filters
-    @param rolloff  - float, rolloff frequency used in bandpass/highpass filters
-    """
-    raise NotImplementedError("filters.butterbase.highpass: not implemented")
-
-
-def bandpass(data, sampling, cutoff, rolloff):
-    """
-    Mutably performs a bandpass butterworth filter on data
-    Default: data=[], sampling=1.0, cutoff=None, rolloff=None
-    @param data     - list of floats, samples
-    @param sampling - float, sampling frequency in seconds
-    @param type     - string, bandpass, highpass, or notch
-    @param cutoff   - float, cutoff frequency used in bandpass/highpass filters
-    @param rolloff  - float, rolloff frequency used in bandpass/highpass filters
-    """
-    if cutoff == None:
-        raise ValueError("Undefined cutoff frequency")
-    if rolloff == None:
-        raise ValueError("Undefined rolloff frequency")
-    raise NotImplementedError("filters.butterbase.bandpass: not implemented")
-
-
-def notch(data, sampling, center, stopband=1.0):
-    """
-    Mutably performs a notch filter on data
-    @param data     - list of floats, samples
-    @param sampling - float, sampling frequency in seconds
-    @param center   - list of floats, center frequencies used in notch filters
-    @param stopband - float, stopband width in percentage
-    """
-    raise NotImplementedError("filters.butterbase.notch: not implemented")
-
-
-def bandstop(data, sampling, center, stopband=1.0):
-    """
-    Mutably performs a notch filter on data
-    @param data     - list of floats, samples
-    @param sampling - float, sampling frequency in seconds
-    @param center   - list of floats, center frequencies used in notch filters
-    @param stopband - float, stopband width in percentage
-    """
-    raise NotImplementedError("filters.butterbase.bandstop: not implemented")
 
 
 class Butter(object):
     # TODO: finish commenting
     # TODO: tidy up class
     # TODO: clean up superfluous code
-    def __init__(self, btype="lowpass", cutoff=None, cutoff1=None, cutoff2=None, rolloff=None, sampling=None):
+    def __init__(self, btype="lowpass", cutoff=None, cutoff1=None, cutoff2=None, rolloff=48, sampling=None):
         """
         @param btype string type of filter, default lowpass
             lowpass
@@ -87,7 +21,7 @@ class Butter(object):
             notch
             bandstop
         filter required arguments
-            @param rolloff float measured in dB/Oct
+            @param rolloff float measured in dB/Oct, default 48Hz
             @param sampling float measured in Hz
         lowpass filter required arguments
             @param cutoff float measured in Hz
@@ -160,11 +94,7 @@ class Butter(object):
         self.output = []
         # to store passed in data
         self.data = []
-        # list of stacks used in calculation of pass filter
-        self.stacklist = [Queue.LifoQueue(maxsize=5)
-                          for i in range(self.N / 2 + 1)]
-        # list of frequencies used in calculation of stop filter
-        self.freqlist = [0 for i in range(5)]
+        # list of frequencies used in calculation of filters
         self.frequencylist = [[0 for i in range(5)] for j in range(self.N / 2 + 1)]
 
         # print "d1=%f\td2=%f" % (d1, d2)
@@ -179,10 +109,10 @@ class Butter(object):
             "notch": self._notchFilterVariables,
             "bandstop": self._bandstopFilterVariables
         }[btype]()
-        for i in range(1,9,1):
-            print("A%d: %.4f\ta1%d: %.4f\ta2%d: %.4f\ta3%d: %.4f\ta4%d: %.4f" % (i, self.filter["A"](i), i, self.filter["a1"](i), i, self.filter["a2"](i), i, self.filter["a3"](i), i, self.filter["a4"](i)))
-        for i in range(1,9,1):
-            print("b1%d: %.4f\tb2%d: %.4f\tb3%d: %.4f\tb4%d: %.4f" % (i, self.filter["b1"](i), i, self.filter["b2"](i), i, self.filter["b3"](i), i, self.filter["b4"](i)))
+        # for i in range(1,9,1):
+        #     print("A%d: %.4f\ta1%d: %.4f\ta2%d: %.4f\ta3%d: %.4f\ta4%d: %.4f" % (i, self.filter["A"](i), i, self.filter["a1"](i), i, self.filter["a2"](i), i, self.filter["a3"](i), i, self.filter["a4"](i)))
+        # for i in range(1,9,1):
+        #     print("b1%d: %.4f\tb2%d: %.4f\tb3%d: %.4f\tb4%d: %.4f" % (i, self.filter["b1"](i), i, self.filter["b2"](i), i, self.filter["b3"](i), i, self.filter["b4"](i)))
         # exit(0)
 
     def getOutput(self):
@@ -190,28 +120,30 @@ class Butter(object):
         Returns accumulated output values
         @return list of float/int accumulated output values, filtered through forward-backward filtering
         """
-        tempStackList = [Queue.LifoQueue(maxsize=5)
-                         for i in range(self.N / 2 + 1)]
+        tempfrequencylist = [[0 for i in range(5)] for j in range(self.N / 2 + 1)]
         data = self.output[:]
         data.reverse()
         output = []
         for amplitude in data:
-            output.append(self._filterHelper4(amplitude, self.frequencylist))
+            output.append(self._filterHelper4(amplitude, tempfrequencylist))
         output.reverse()
         return output
 
     def send(self, data):
         """
         Send data to Butterworth filter
-        @param data list of int amplitude data to take in
+        @param data list of floats amplitude data to take in
         @return values from the filtered data, with forward filtering
         """
         if type(data) != list:
             raise TypeError(
-                "Butter.send: type of data must be a list of integers")
+                "Butter.send: type of data must be a list of floats")
         self.data += data
         output = []
         for amplitude in data:
+            if type(amplitude) != float:
+                raise TypeError(
+                    "Butter.send: type of data must be a list of floats")
             output.append(self._filterHelper4(amplitude, self.frequencylist))
         self.output += output
         return output
@@ -491,13 +423,13 @@ class Butter(object):
         @return dictionary key:string variable value: lambda k
         """
         basic = self._basicFilterVariables()
-        Op1 = 2 * (math.pi * float(self.f1) / self.fs)
-        Op2 = 2 * (math.pi * float(self.f2) / self.fs)
+        Op1 = 2 * (math.pi * (self.f1) / self.fs)
+        Op2 = 2 * (math.pi * (self.f2) / self.fs)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
         k = (self.wc / 2.0) / math.tan((Op2 - Op1) / 2.0)
         A = 2 * alpha * k / (k + 1)
         B = (k - 1) / (k + 1)
-        # print(Op1, Op2, self.wc, vp, alpha, k, A, B)
+        # print(Op1, Op2, self.wc, alpha, k, A, B)
         # raw_input()
         # a = math.sin((vp - Op2) / 2.0) / \
         #     math.sin((vp + Op2) / 2.0)
@@ -511,10 +443,10 @@ class Butter(object):
         bandpass = {}
         bandpass["A"] = lambda k: basic["A"](k) * ((1 - B)**2) / C(k)
         bandpass["B"] = basic["B"]
-        bandpass["a1"] = lambda k: -basic["a1"](k)
-        bandpass["a2"] = basic["a2"]
-        bandpass["a3"] = basic["a3"]
-        bandpass["a4"] = basic["a4"]
+        bandpass["a1"] = lambda k: 0#-basic["a1"](k)
+        bandpass["a2"] = lambda k: -basic["a1"](k)
+        bandpass["a3"] = lambda k: 0#basic["a3"](k)
+        bandpass["a4"] = lambda k: basic["a2"](k)#basic["a4"](k)
         bandpass["b1"] = lambda k: (A / C(k)) * (B * (basic["b1"](k) - 2 * basic["b2"](k)) + (basic["b1"](k) - 2))
         bandpass["b2"] = lambda k: (1 / C(k)) * ((A**2) * (1 - basic["b1"](k) + basic["b2"](k)) + 2 * B * (1 + basic["b2"](k)) - basic["b1"](k) * (B**2) - basic["b1"](k))
         bandpass["b3"] = lambda k: (A / C(k)) * (B * (basic["b1"](k) - 2) + (basic["b1"](k) - 2 * basic["b2"](k)))
@@ -573,31 +505,31 @@ class Butter(object):
         Op2 = 2 * (math.pi * self.f2 / self.fs)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
         k = (self.wc / 2.0) * math.tan((Op2 - Op1) / 2.0)
-        A = 2 * alpha * k / (k + 1)
+        A = 2 * alpha / (k + 1)
         B = (1 - k) / (1 + k)
 
         def C(k): return 1 + basic["b1"](k) * \
-            B + basic["b2"](k) * (basic["B"](k)**2)
+            B + basic["b2"](k) * (B**2)
         bandstop = {}
         bandstop["A"] = lambda k: basic["A"](k) * ((1 + B)**2) / C(k)
         bandstop["B"] = basic["B"]
         bandstop["a1"] = lambda k: -4.0 * A / (B + 1)
-        bandstop["a2"] = lambda k: 2.0 * ((2 * A**2)/((B + 1)**2) + 1)
+        bandstop["a2"] = lambda k: 2.0 * ((2 * (A**2))/((B + 1)**2) + 1)
         bandstop["a3"] = lambda k: -4.0 * A / (B + 1)
         bandstop["a4"] = lambda k: 1
         bandstop["b1"] = lambda k: -(A / C(k)) * \
             (B * (basic["b1"](k) + 2 * basic["b2"](k)) +
              (2 + basic["b1"](k)))
         bandstop["b2"] = lambda k: (1 / C(k)) * \
-            (A**2 * (1 + basic["b1"](k) + basic["b2"](k)) +
+            ((A**2) * (1 + basic["b1"](k) + basic["b2"](k)) +
              2 * B * (1 + basic["b2"](k)) +
-             basic["b1"](k) * B**2 +
+             basic["b1"](k) * (B**2) +
              basic["b1"](k))
         bandstop["b3"] = lambda k: -(A / C(k)) * \
             (B * (basic["b1"](k) + 2) +
              (basic["b1"](k) + 2 * basic["b2"](k)))
         bandstop["b4"] = lambda k: (1 / C(k)) * \
-            (B**2 +
+            ((B**2) +
              basic["b1"](k) * B +
              basic["b2"](k))
         return bandstop
