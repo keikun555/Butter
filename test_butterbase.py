@@ -4,7 +4,7 @@ Kei Imada
 Test file for filters/butterbase.py
 """
 
-from filters.butterbase import *
+from filters.butterbase2 import *
 import matplotlib.pyplot as plt
 from numpy import fft
 import cmath

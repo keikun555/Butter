@@ -141,9 +141,6 @@ class Butter(object):
         self.data += data
         output = []
         for amplitude in data:
-            if type(amplitude) != float:
-                raise TypeError(
-                    "Butter.send: type of data must be a list of floats")
             output.append(self._filterHelper4(amplitude, self.frequencylist))
         self.output += output
         return output
