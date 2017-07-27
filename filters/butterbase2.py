@@ -6,24 +6,26 @@ Base code for butterworth filter, this time using arrays instead of disctionarie
 
 import math
 import numpy as np
-from numba import autojit
+from numba import jit, autojit
+import time
 
 
-@autojit
+@jit(nopython=True, cache=True)
 def filterHelper(x, w, f, N):
     """
-    x
-    w
-    filter
-    N
-    m=0
+    x a float
+    w an array of arrays of floats
+    f an array of arrays of floats
+    N an int
     """
+    previousx = w[0]
+    previousy = w[1]
+
+    previousx[4] = x
     for m in range(N/2):
 
         previousx = w[m]
         previousy = w[m+1]
-
-        previousx[4] = x
 
         ym = f[0][m] * (
             x +
@@ -133,7 +135,7 @@ class Butter(object):
         # to store passed in data
         self.data = []
         # list of frequencies used in calculation of filters
-        self.frequencylist = [[0 for i in range(5)] for j in range(self.N / 2 + 1)]
+        self.frequencylist = np.array([[0.0 for i in range(5)] for j in range(self.N / 2 + 1)])
 
         # print "d1=%f\td2=%f" % (d1, d2)
         # print "N=%d" % self.N
@@ -154,7 +156,7 @@ class Butter(object):
             for i in range(self.N / 2):
                 fin.append(float(self.filter[key](i)))
             f.append(fin)
-        self.newfilter = f
+        self.newfilter = np.array(f)
         # for i in range(1,9,1):
         #     print("A%d: %.4f\ta1%d: %.4f\ta2%d: %.4f\ta3%d: %.4f\ta4%d: %.4f" % (i, self.filter["A"](i), i, self.filter["a1"](i), i, self.filter["a2"](i), i, self.filter["a3"](i), i, self.filter["a4"](i)))
         # for i in range(1,9,1):
@@ -186,9 +188,14 @@ class Butter(object):
                 "Butter.send: type of data must be a list of floats")
         self.data += data
         output = []
+        times = []
         for amplitude in data:
-            output.append(self._filterHelper6(amplitude, self.frequencylist))
+            t1 = time.time()
+            # output.append(filterHelper(amplitude, self.frequencylist, self.newfilter, self.N))
+            output.append(self._filterHelper5(amplitude, self.frequencylist))
+            times.append(time.time() - t1)
         self.output += output
+        print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
         return output
 
     def _filterHelper(self, stacklist, m=0):

@@ -8,8 +8,8 @@ Testing the WAVfilter package
 import WAVfilter as wav
 
 def main():
-    inf = wav.open("test3.wav")
-    inf.set_filter(btype="lowpass", cutoff=4000, cutoff1=85, cutoff2=180, rolloff=48)
-    inf.write("test3_filtered.wav")
+    inf = wav.open("test2.wav")
+    inf.set_filter(btype="notch", cutoff=180, cutoff1=85, cutoff2=1000, rolloff=48)
+    inf.write("test2_filtered.wav")
 
 main()

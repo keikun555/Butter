@@ -11,20 +11,33 @@ import __builtin__
 
 __all__ = ["open"]
 
+
 def open(f):
     return WAVfilter(f)
+
 
 class WAVfilter(object):
     def __init__(self, f):
         self._file = wave.open(f, "r")
-        data = np.fromstring(self._file.readframes(self._file.getnframes()), dtype=np.int16)
-        self._amparray = data.tolist()
-        print len(self._amparray)
+        self._fparams = self._file.getparams()
+        if self._fparams[1] == 1:
+            # nbytesframe
+            self._tp = np.uint8
+        else:
+            self._tp = np.int16
+        data = np.fromstring(self._file.readframes(self._file.getnframes()), dtype=self._tp).tolist()
+        if self._fparams[0] == 1:
+            self._stereo = False
+            self._mono = data
+        else:
+            self._stereo = True
+            self._left = data[::2]
+            self._right = data[1::2]
+
         # init = self._amparray[0]
         # for i in range(100):
         #     print self._amparray[i] - init
         # print type(init)
-        self._fparams = self._file.getparams()
         self._filterSet = False
     def __del__(self):
         self._file.close()
@@ -55,18 +68,30 @@ class WAVfilter(object):
             cutoff1 =< cutoff2
         """
         self._filter = Butter(btype=btype, cutoff=cutoff, cutoff1=cutoff1, cutoff2=cutoff2, rolloff=rolloff, sampling=self._file.getframerate())
+        if self._stereo:
+            self._filter2 = Butter(btype=btype, cutoff=cutoff, cutoff1=cutoff1, cutoff2=cutoff2, rolloff=rolloff, sampling=self._file.getframerate())
         self._filterSet = True
     def write(self, f):
         if not self._filterSet:
-            raise Exception("WAVfilter.write you must use set_filter to set your filter")
-        data = self._filter.send(self._amparray)
-        for (i, j) in zip(self._amparray, np.int16(data)):
-            print i, j
+            if self._stereo:
+                output = [None for i in range(len(fleft) + len(fright))]
+                output[::2] = self._left
+                output[1::2] = self._right
+            else:
+                output = self._mono
+        elif self._stereo:
+            #TODO use multithreading to do concurrent filtering with fleft and fright
+            fleft = self._filter.send(self._left)
+            fright = self._filter2.send(self._right)
+            output = [None for i in range(len(fleft) + len(fright))]
+            output[::2] = fleft
+            output[1::2] = fright
+        else:
+            output = self._filter.send(self._mono)
+        # for (i, j) in zip(self._amparray, np.int16(data)):
+        #     print i, j
         # data = self._filter.getOutput()
         out = wave.open(f, "w")
         out.setparams(self._fparams)
         # print np.int16(np.array(data))
-        out.writeframes(np.int16(np.array(data)).tostring())
-
-        exit(0)
-        raise NotImplementedError("write")
+        out.writeframes((np.array(output).astype(self._tp)).tostring())
