@@ -195,7 +195,7 @@ class Butter(object):
             output.append(self._filterHelper5(amplitude, self.frequencylist))
             times.append(time.time() - t1)
         self.output += output
-        print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
+        # print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
         return output
 
     def _filterHelper(self, stacklist, m=0):
