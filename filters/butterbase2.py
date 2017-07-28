@@ -135,7 +135,7 @@ class Butter(object):
         # to store passed in data
         self.data = []
         # list of frequencies used in calculation of filters
-        self.frequencylist = np.array([[0.0 for i in range(5)] for j in range(self.N / 2 + 1)])
+        self.frequencylist = np.array([np.array([0.0 for i in range(5)]) for j in range(self.N / 2 + 1)])
 
         # print "d1=%f\td2=%f" % (d1, d2)
         # print "N=%d" % self.N
@@ -189,11 +189,15 @@ class Butter(object):
         self.data += data
         output = []
         times = []
+        # print type(self.frequencylist)
+        # print type(self.newfilter)
         for amplitude in data:
-            t1 = time.time()
+            # t1 = time.time()
             # output.append(filterHelper(amplitude, self.frequencylist, self.newfilter, self.N))
-            output.append(self._filterHelper5(amplitude, self.frequencylist))
-            times.append(time.time() - t1)
+            newamp = filterHelper(amplitude, np.array(self.frequencylist), self.newfilter, self.N)
+            output.append(newamp)
+            # output.append(self._filterHelper5(amplitude, self.frequencylist))
+            # times.append(time.time() - t1)
         self.output += output
         # print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
         return output
@@ -350,7 +354,7 @@ class Butter(object):
             return ym
 
     def _filterHelper5(self, x, w):
-        return filterHelper(x, np.array(w), np.array(self.newfilter), self.N)
+        return filterHelper(x, np.array(w), self.newfilter, self.N)
 
     def _filterHelper6(self, x, w):
         """
