@@ -192,14 +192,14 @@ class Butter(object):
         # print type(self.frequencylist)
         # print type(self.newfilter)
         for amplitude in data:
-            # t1 = time.time()
+            t1 = time.time()
             # output.append(filterHelper(amplitude, self.frequencylist, self.newfilter, self.N))
             newamp = filterHelper(amplitude, np.array(self.frequencylist), self.newfilter, self.N)
             output.append(newamp)
             # output.append(self._filterHelper5(amplitude, self.frequencylist))
-            # times.append(time.time() - t1)
+            times.append(time.time() - t1)
         self.output += output
-        # print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
+        print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
         return output
 
     def _filterHelper(self, stacklist, m=0):
