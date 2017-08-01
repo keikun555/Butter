@@ -28,16 +28,16 @@ def _filterHelper(x, w, f, N):
         previousy = w[m + 1]
 
         ym = f[0][m] * (
-            previousx[4] +
-            f[1][m] * previousx[3] +
-            f[2][m] * previousx[2] +
-            f[3][m] * previousx[1] +
-            f[4][m] * previousx[0]
+            previousx[4]
+            + f[1][m] * previousx[3]
+            + f[2][m] * previousx[2]
+            + f[3][m] * previousx[1]
+            + f[4][m] * previousx[0]
         ) - (
-            f[5][m] * previousy[3] +
-            f[6][m] * previousy[2] +
-            f[7][m] * previousy[1] +
-            f[8][m] * previousy[0]
+            f[5][m] * previousy[3]
+            + f[6][m] * previousy[2]
+            + f[7][m] * previousy[1]
+            + f[8][m] * previousy[0]
         )
 
         previousy[4] = ym
@@ -174,15 +174,11 @@ class Butter(object):
                 "Butter.send: type of data must be a list of floats")
         self.data += data
         output = []
-        times = []
-        np.set_printoptions(precision=4, suppress=True)
         for amplitude in data:
             newamp = _filterHelper(
                 amplitude, self.frequencylist, self.filter, self.N)
             output.append(newamp)
         self.output += output
-        print("fastest possible frequency for real-time filtering: %f" %
-              (1.0 / (sum(times) / (len(times)))))
         return output
 
     def _basic_filter_variables(self):

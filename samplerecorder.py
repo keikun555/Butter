@@ -1,18 +1,19 @@
 import pyaudio
 import wave
 import numpy as np
-from filters.butterbase2 import Butter
+from filters.butterbase import Butter
 import threading
+import time
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
-CHUNK = 1024
+CHUNK = 256
 RECORD_SECONDS = 10
 WAVE_OUTPUT_FILENAME = "file.wav"
 
 T = "lowpass"
-butter = Butter(cutoff=10000, cutoff1=0, cutoff2=1000, rolloff=48, sampling=RATE, btype="%s" % T)
+butter = Butter(cutoff=10000, cutoff1=85, cutoff2=10000, rolloff=48, sampling=RATE, btype="%s" % T)
 
 audio = pyaudio.PyAudio()
 
@@ -27,18 +28,24 @@ print "recording..."
 frames = []
 d = []
 threads = []
+lock = threading.Lock()
 
-def filterOutStream(data):
+def filterOutStream(data, lock):
     # print streamOUT.get_write_available()
+    t1 = time.time()
     fil = butter.send(np.fromstring(data, dtype=np.int16).tolist())
+    dt = time.time() - t1
+    # print 1.0/(dt/64)
     # d += np.fromstring(data, dtype=np.int16).tolist()
     fil = (np.array(fil).astype(np.int16)).tostring()
+    lock.acquire()
     streamOUT.write(fil)
+    lock.release()
 
 for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
     data = streamIN.read(CHUNK)
     frames.append(data)
-    t = threading.Thread(target=filterOutStream, args=(data,))
+    t = threading.Thread(target=filterOutStream, args=(data,lock,))
     t.start()
     threads.append(t)
 
