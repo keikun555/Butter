@@ -1,52 +1,12 @@
 """
 Kei Imada
 20170604
-Base code for butterworth filter, this time using arrays instead of disctionaries
+Base code for butterworth filter
 """
 
 import math
-import numpy as np
-from numba import jit, autojit
-import time
+import array
 
-
-@jit(nopython=True, cache=True)
-def _filterHelper(x, w, f, N):
-    """
-    x a float
-    w an array of arrays of floats
-    f an array of arrays of floats
-    N an int
-    """
-    previousx = w[0]
-    previousy = w[1]
-
-    previousx[4] = x
-    for m in range(N/2):
-
-        previousx = w[m]
-        previousy = w[m+1]
-
-        ym = f[0][m] * (
-            x +
-            f[2][m] * previousx[3] +
-            f[3][m] * previousx[2] +
-            f[4][m] * previousx[1] +
-            f[5][m] * previousx[0]
-        ) - (
-            f[6][m] * previousy[3] +
-            f[7][m] * previousy[2] +
-            f[8][m] * previousy[1] +
-            f[9][m] * previousy[0]
-        )
-
-        previousy[4] = ym
-
-        for i in range(len(previousx) - 1):
-            previousx[i] = previousx[i+1]
-    for i in range(len(previousy) - 1):
-        previousy[i] = previousy[i+1]
-    return ym
 
 class Butter(object):
     # TODO: finish commenting
@@ -135,7 +95,7 @@ class Butter(object):
         # to store passed in data
         self.data = []
         # list of frequencies used in calculation of filters
-        self.frequencylist = np.array([np.array([0.0 for i in range(5)]) for j in range(self.N / 2 + 1)])
+        self.frequencylist = [[0 for i in range(5)] for j in range(self.N / 2 + 1)]
 
         # print "d1=%f\td2=%f" % (d1, d2)
         # print "N=%d" % self.N
@@ -149,14 +109,6 @@ class Butter(object):
             "notch": self._notchFilterVariables,
             "bandstop": self._bandstopFilterVariables
         }[btype]()
-
-        f = []
-        for key in sorted(self.filter.keys()):
-            fin = []
-            for i in range(self.N / 2):
-                fin.append(float(self.filter[key](i)))
-            f.append(fin)
-        self.newfilter = np.array(f)
         # for i in range(1,9,1):
         #     print("A%d: %.4f\ta1%d: %.4f\ta2%d: %.4f\ta3%d: %.4f\ta4%d: %.4f" % (i, self.filter["A"](i), i, self.filter["a1"](i), i, self.filter["a2"](i), i, self.filter["a3"](i), i, self.filter["a4"](i)))
         # for i in range(1,9,1):
@@ -173,7 +125,7 @@ class Butter(object):
         data.reverse()
         output = []
         for amplitude in data:
-            output.append(self._filterHelper5(amplitude, tempfrequencylist))
+            output.append(self._filterHelper4(amplitude, tempfrequencylist))
         output.reverse()
         return output
 
@@ -188,243 +140,190 @@ class Butter(object):
                 "Butter.send: type of data must be a list of floats")
         self.data += data
         output = []
-        times = []
-        # print type(self.frequencylist)
-        # print type(self.newfilter)
         for amplitude in data:
-            t1 = time.time()
-            # output.append(filterHelper(amplitude, self.frequencylist, self.newfilter, self.N))
-            newamp = _filterHelper(amplitude, np.array(self.frequencylist), self.newfilter, self.N)
-            output.append(newamp)
-            # output.append(self._filterHelper5(amplitude, self.frequencylist))
-            times.append(time.time() - t1)
+            output.append(self._filterHelper4(amplitude, self.frequencylist))
         self.output += output
-        print("fastest possible frequency for real-time filtering: %f" % (1.0/(sum(times)/(len(times)))))
         return output
 
-    # def _filterHelper(self, stacklist, m=0):
-    #     """
-    #     Helper for the butterworth filter
-    #     @params stacklist list of Stacks containing necessary variables
-    #     @params m int counter
-    #     @return output of filter for the specific input
-    #     """
-    #     # setup
-    #     k = m + 1
-    #     xn = []
-    #     for i in range(5):
-    #         if stacklist[m].empty():
-    #             xn.append(0)
-    #         else:
-    #             xn.append(stacklist[m].get_nowait())
-    #     yn = []
-    #     for i in range(5):
-    #         if stacklist[k].empty():
-    #             yn.append(0)
-    #         else:
-    #             yn.append(stacklist[k].get_nowait())
-    #     # calculation
-    #     newyn = self.filter["A"](k) * (
-    #         xn[0] +
-    #         self.filter["a1"](k) * xn[1] +
-    #         self.filter["a2"](k) * xn[2] +
-    #         self.filter["a3"](k) * xn[3] +
-    #         self.filter["a4"](k) * xn[4]
-    #     ) - (
-    #         self.filter["b1"](k) * yn[0] +
-    #         self.filter["b2"](k) * yn[1] +
-    #         self.filter["b3"](k) * yn[2] +
-    #         self.filter["b4"](k) * yn[3]
-    #     )
-    #     # setup for next iteration
-    #     for i in range(3, -1, -1):
-    #         stacklist[m].put_nowait(xn[i])
-    #     for i in range(2, -1, -1):
-    #         stacklist[k].put_nowait(yn[i])
-    #     stacklist[k].put_nowait(newyn)
-    #     # print m, newyn
-    #     # base case
-    #     if k >= self.N / 2:
-    #         # return if k==self.N/2
-    #         # raw_input()
-    #         return newyn
-    #     # recurse if not at end
-    #     return self._filterHelper(stacklist, m=m + 1)
-    #
-    # def _filterHelper2(self, x, w, m=0):
-    #     """
-    #     Helper2 for the butterworth filter
-    #     @params x amplitude
-    #     @params w list to store calculated frequencies
-    #     @params m int counter
-    #     @return output of filter for the specific input
-    #     """
-    #     k = m + 1
-    #     # for i in range(5):
-    #     #     print("w[%d]=%f" % (i, w[i]))
-    #     w[4] = self.filter["A"](k) * x - (
-    #         self.filter["b1"](k) * w[3] +
-    #         self.filter["b2"](k) * w[2] +
-    #         self.filter["b3"](k) * w[1] +
-    #         self.filter["b4"](k) * w[0]
-    #     )
-    #     y = w[4] + (
-    #         self.filter["a1"](k) * w[3] +
-    #         self.filter["a2"](k) * w[2] +
-    #         self.filter["a3"](k) * w[1] +
-    #         self.filter["a4"](k) * w[0]
-    #     )
-    #     for i in range(4):
-    #         w[i] = w[i+1]
-    #
-    #     if k >= self.N/2:
-    #         # return if k==self.N
-    #         # print y
-    #         # raw_input()
-    #         return y
-    #     # recurse if not at end
-    #     return self._filterHelper2(y, w, m=m + 1)
-    #
-    # def _filterHelper3(self, x, w, m=0):
-    #     """
-    #     Helper 3 for the butterworth filter
-    #     @params x amplitude
-    #     @params w list to store calculated frequencies
-    #     @params m counter
-    #     @return output of filter for the specific input
-    #     """
-    #     k = m + 1
-    #     # for i in range(5):
-    #     #     print("w[%d]=%f" % (i, w[i]))
-    #     w[4] = self.filter["A"](k) * x - (
-    #         self.filter["b1"](k) * w[3] +
-    #         self.filter["b2"](k) * w[2] +
-    #         self.filter["b3"](k) * w[1] +
-    #         self.filter["b4"](k) * w[0]
-    #     )
-    #     y = w[4] + (
-    #         self.filter["a1"](k) * w[3] +
-    #         self.filter["a2"](k) * w[2] +
-    #         self.filter["a3"](k) * w[1] +
-    #         self.filter["a4"](k) * w[0]
-    #     )
-    #     for i in range(4):
-    #         w[i] = w[i+1]
-    #
-    #     return y
-    #
-    # def _filterHelper4(self, x, w, m=0):
-    #     """
-    #     Helper 4 for the butterworth filter
-    #     @params x amplitude
-    #     @params w list to store calculated frequencies
-    #     @params m counter
-    #     @return output of filter for the specific input
-    #     """
-    #     k = m + 1
-    #
-    #     previousx = w[m]
-    #     previousy = w[k]
-    #
-    #     previousx[4] = x
-    #
-    #     ym = self.filter["A"](k) * (
-    #         x +
-    #         self.filter["a1"](k) * previousx[3] +
-    #         self.filter["a2"](k) * previousx[2] +
-    #         self.filter["a3"](k) * previousx[1] +
-    #         self.filter["a4"](k) * previousx[0]
-    #     ) - (
-    #         self.filter["b1"](k) * previousy[3] +
-    #         self.filter["b2"](k) * previousy[2] +
-    #         self.filter["b3"](k) * previousy[1] +
-    #         self.filter["b4"](k) * previousy[0]
-    #     )
-    #
-    #     previousy[4] = ym
-    #
-    #     for i in range(len(previousx) - 1):
-    #         previousx[i] = previousx[i+1]
-    #
-    #     if k < self.N / 2:
-    #         return self._filterHelper4(ym, w, m=m+1)
-    #     else:
-    #         for i in range(len(previousy) - 1):
-    #             previousy[i] = previousy[i+1]
-    #         return ym
-    #
-    # def _filterHelper5(self, x, w):
-    #     return filterHelper(x, np.array(w), self.newfilter, self.N)
-    #
-    # def _filterHelper6(self, x, w):
-    #     """
-    #     Helper 4 for the butterworth filter
-    #     @params x amplitude
-    #     @params w list to store calculated frequencies
-    #     @params m counter
-    #     @return output of filter for the specific input
-    #     """
-    #     previousx = w[0]
-    #     previousy = w[1]
-    #
-    #     previousx[4] = x
-    #     for m in range(self.N/2):
-    #
-    #         k=m+1
-    #
-    #         previousx = w[m]
-    #         previousy = w[k]
-    #
-    #         ym = self.filter["A"](k) * (
-    #             previousx[4] +
-    #             self.filter["a1"](k) * previousx[3] +
-    #             self.filter["a2"](k) * previousx[2] +
-    #             self.filter["a3"](k) * previousx[1] +
-    #             self.filter["a4"](k) * previousx[0]
-    #         ) - (
-    #             self.filter["b1"](k) * previousy[3] +
-    #             self.filter["b2"](k) * previousy[2] +
-    #             self.filter["b3"](k) * previousy[1] +
-    #             self.filter["b4"](k) * previousy[0]
-    #         )
-    #
-    #         previousy[4] = ym
-    #
-    #         for i in range(len(previousx) - 1):
-    #             previousx[i] = previousx[i+1]
-    #
-    #     for i in range(len(previousy) - 1):
-    #         previousy[i] = previousy[i+1]
-    #     return ym
-    #
-    # def getTransform(self, btype):
-    #     """
-    #     @param btype string type of filter
-    #         lowpass
-    #         highpass
-    #         bandpass
-    #         notch
-    #         bandstop
-    #     return lambda z analog filter function
-    #     """
-    #     if btype not in ["lowpass", "highpass", "bandpass", "notch"]:
-    #         raise ValueError("ButterBase.getFilter: invalid btype %s" % btype)
-    #     var = {
-    #         "lowpass": _lowpassFilterVariables,
-    #         "highpass": _highpassFilterVariables,
-    #         "bandpass": _bandpassFilterVariables,
-    #         "notch": _notchFilterVariables,
-    #         "bandstop": _bandstopFilterVariables
-    #     }[btype]()
-    #
-    #     def transform(z):
-    #         """
-    #         This will be the filter function to return
-    #         """
-    #         factors = map(
-    #             lambda k: var["A"](k) * (1 + var["a1"](k) * (z**(-1)) + var["a2"](k) * (z**(-2)) + var["a3"](k) * (z**(-3)) + var["a4"](k) * (z**(-4))) / (1 + var["b1"](k) * (z**(-1)) + var["b2"](k) * (z**(-2)) + var["b3"](k) * (z**(-3)) + var["b4"](k) * (z**(-4))), [i for i in range(1, self.N / 2 + 1)])
-    #         return reduce(lambda x, y: x * y, factors)
-    #     return transform
+    def _filterHelper(self, stacklist, m=0):
+        """
+        Helper for the butterworth filter
+        @params stacklist list of Stacks containing necessary variables
+        @params m int counter
+        @return output of filter for the specific input
+        """
+        # setup
+        k = m + 1
+        xn = []
+        for i in range(5):
+            if stacklist[m].empty():
+                xn.append(0)
+            else:
+                xn.append(stacklist[m].get_nowait())
+        yn = []
+        for i in range(5):
+            if stacklist[k].empty():
+                yn.append(0)
+            else:
+                yn.append(stacklist[k].get_nowait())
+        # calculation
+        newyn = self.filter["A"](k) * (
+            xn[0] +
+            self.filter["a1"](k) * xn[1] +
+            self.filter["a2"](k) * xn[2] +
+            self.filter["a3"](k) * xn[3] +
+            self.filter["a4"](k) * xn[4]
+        ) - (
+            self.filter["b1"](k) * yn[0] +
+            self.filter["b2"](k) * yn[1] +
+            self.filter["b3"](k) * yn[2] +
+            self.filter["b4"](k) * yn[3]
+        )
+        # setup for next iteration
+        for i in range(3, -1, -1):
+            stacklist[m].put_nowait(xn[i])
+        for i in range(2, -1, -1):
+            stacklist[k].put_nowait(yn[i])
+        stacklist[k].put_nowait(newyn)
+        # print m, newyn
+        # base case
+        if k >= self.N / 2:
+            # return if k==self.N/2
+            # raw_input()
+            return newyn
+        # recurse if not at end
+        return self._filterHelper(stacklist, m=m + 1)
+
+    def _filterHelper2(self, x, w, m=0):
+        """
+        Helper2 for the butterworth filter
+        @params x amplitude
+        @params w list to store calculated frequencies
+        @params m int counter
+        @return output of filter for the specific input
+        """
+        k = m + 1
+        # for i in range(5):
+        #     print("w[%d]=%f" % (i, w[i]))
+        w[4] = self.filter["A"](k) * x - (
+            self.filter["b1"](k) * w[3] +
+            self.filter["b2"](k) * w[2] +
+            self.filter["b3"](k) * w[1] +
+            self.filter["b4"](k) * w[0]
+        )
+        y = w[4] + (
+            self.filter["a1"](k) * w[3] +
+            self.filter["a2"](k) * w[2] +
+            self.filter["a3"](k) * w[1] +
+            self.filter["a4"](k) * w[0]
+        )
+        for i in range(4):
+            w[i] = w[i+1]
+
+        if k >= self.N/2:
+            # return if k==self.N
+            # print y
+            # raw_input()
+            return y
+        # recurse if not at end
+        return self._filterHelper2(y, w, m=m + 1)
+
+    def _filterHelper3(self, x, w, m=0):
+        """
+        Helper 3 for the butterworth filter
+        @params x amplitude
+        @params w list to store calculated frequencies
+        @params m counter
+        @return output of filter for the specific input
+        """
+        k = m + 1
+        # for i in range(5):
+        #     print("w[%d]=%f" % (i, w[i]))
+        w[4] = self.filter["A"](k) * x - (
+            self.filter["b1"](k) * w[3] +
+            self.filter["b2"](k) * w[2] +
+            self.filter["b3"](k) * w[1] +
+            self.filter["b4"](k) * w[0]
+        )
+        y = w[4] + (
+            self.filter["a1"](k) * w[3] +
+            self.filter["a2"](k) * w[2] +
+            self.filter["a3"](k) * w[1] +
+            self.filter["a4"](k) * w[0]
+        )
+        for i in range(4):
+            w[i] = w[i+1]
+
+        return y
+
+    def _filterHelper4(self, x, w, m=0):
+        """
+        Helper 4 for the butterworth filter
+        @params x amplitude
+        @params w list to store calculated frequencies
+        @params m counter
+        @return output of filter for the specific input
+        """
+        k = m + 1
+
+        previousx = w[m]
+        previousy = w[k]
+
+        previousx[4] = x
+
+        ym = self.filter["A"](k) * (
+            x +
+            self.filter["a1"](k) * previousx[3] +
+            self.filter["a2"](k) * previousx[2] +
+            self.filter["a3"](k) * previousx[1] +
+            self.filter["a4"](k) * previousx[0]
+        ) - (
+            self.filter["b1"](k) * previousy[3] +
+            self.filter["b2"](k) * previousy[2] +
+            self.filter["b3"](k) * previousy[1] +
+            self.filter["b4"](k) * previousy[0]
+        )
+
+        previousy[4] = ym
+
+        for i in range(len(previousx) - 1):
+            previousx[i] = previousx[i+1]
+
+        if k < self.N / 2:
+            return self._filterHelper4(ym, w, m=m+1)
+        else:
+            for i in range(len(previousy) - 1):
+                previousy[i] = previousy[i+1]
+            return ym
+
+    def getTransform(self, btype):
+        """
+        @param btype string type of filter
+            lowpass
+            highpass
+            bandpass
+            notch
+            bandstop
+        return lambda z analog filter function
+        """
+        if btype not in ["lowpass", "highpass", "bandpass", "notch"]:
+            raise ValueError("ButterBase.getFilter: invalid btype %s" % btype)
+        var = {
+            "lowpass": _lowpassFilterVariables,
+            "highpass": _highpassFilterVariables,
+            "bandpass": _bandpassFilterVariables,
+            "notch": _notchFilterVariables,
+            "bandstop": _bandstopFilterVariables
+        }[btype]()
+
+        def transform(z):
+            """
+            This will be the filter function to return
+            """
+            factors = map(
+                lambda k: var["A"](k) * (1 + var["a1"](k) * (z**(-1)) + var["a2"](k) * (z**(-2)) + var["a3"](k) * (z**(-3)) + var["a4"](k) * (z**(-4))) / (1 + var["b1"](k) * (z**(-1)) + var["b2"](k) * (z**(-2)) + var["b3"](k) * (z**(-3)) + var["b4"](k) * (z**(-4))), [i for i in range(1, self.N / 2 + 1)])
+            return reduce(lambda x, y: x * y, factors)
+        return transform
 
     def _basicFilterVariables(self):
         """
@@ -484,7 +383,6 @@ class Butter(object):
         # print "Op: %.3f" % Op
         # print "vp: %.3f" % vp
         # print "alpha: %.4f" % alpha(1)
-
         return lowpass
 
     def _highpassFilterVariables(self):
@@ -632,8 +530,3 @@ class Butter(object):
              basic["b1"](k) * B +
              basic["b2"](k))
         return bandstop
-
-def main():
-    Butter(btype="bandpass", cutoff=100, cutoff1=200, cutoff2=300, rolloff=48, sampling=3109)
-if __name__ == "__main__":
-    main()

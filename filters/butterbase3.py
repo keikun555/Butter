@@ -1,12 +1,8 @@
 """
 Kei Imada
-20170801
-A Butterworth signal filter worth using
+20170604
+Base code for butterworth filter, this time using arrays instead of disctionaries
 """
-
-__all__ = ["Butter"]
-__version__ = "1.0"
-__author__ = "Kei Imada"
 
 import math
 import numpy as np
@@ -26,6 +22,7 @@ def _filterHelper(x, w, f, N):
     for m in range(N / 2):
         previousx = w[m]
         previousy = w[m + 1]
+        # print previousx[4]
 
         ym = f[0][m] * (
             previousx[4] +
@@ -46,14 +43,16 @@ def _filterHelper(x, w, f, N):
             previousx[i] = previousx[i + 1]
     for i in range(len(previousy) - 1):
         previousy[i] = previousy[i + 1]
+    # print w, ym
     return ym
 
 
 class Butter(object):
-    def __init__(self, btype="lowpass", cutoff=None,
-                 cutoff1=None, cutoff2=None,
-                 rolloff=48, sampling=None):
-        """The constructor for the butter filter object
+    # TODO: finish commenting
+    # TODO: tidy up class
+    # TODO: clean up superfluous code
+    def __init__(self, btype="lowpass", cutoff=None, cutoff1=None, cutoff2=None, rolloff=48, sampling=None):
+        """
         @param btype string type of filter, default lowpass
             lowpass
             highpass
@@ -79,12 +78,8 @@ class Butter(object):
             cutoff1 =< cutoff2
         """
         # input checking
-        valid = map(lambda k: k[0],
-                    filter(lambda k: type(k[1]) in [int, float],
-                           zip(["cutoff", "cutoff1", "cutoff2", "rolloff", "sampling"],
-                               [cutoff, cutoff1, cutoff2, rolloff, sampling])
-                               )
-                    )
+        valid = map(lambda k: k[0], filter(lambda k: type(k[1]) in [int, float], zip(
+            ["cutoff", "cutoff1", "cutoff2", "rolloff", "sampling"], [cutoff, cutoff1, cutoff2, rolloff, sampling])))
         if None in [rolloff, sampling]:
             raise ValueError(
                 "Butter:rolloff and sampling required for %s filter" % btype)
@@ -141,17 +136,27 @@ class Butter(object):
         # list of frequencies used in calculation of filters
         self.frequencylist = np.zeros((self.N / 2 + 1, 5))
 
+        # print "d1=%f\td2=%f" % (d1, d2)
+        # print "N=%d" % self.N
+        # print "wc=%fpi" % (self.wc/math.pi)
+
         # set variables for desired filter
         self.filter = {
-            "lowpass": self._lowpass_filter_variables,
-            "highpass": self._highpass_filter_variables,
-            "bandpass": self._bandpass_filter_variables,
-            "notch": self._notch_filter_variables,
-            "bandstop": self._bandstop_filter_variables
-            }[btype]()
+            "lowpass": self._lowpassFilterVariables,
+            "highpass": self._highpassFilterVariables,
+            "bandpass": self._bandpassFilterVariables,
+            "notch": self._notchFilterVariables,
+            "bandstop": self._bandstopFilterVariables
+        }[btype]()
+        # for i in range(1,9,1):
+        #     print("A%d: %.4f\ta1%d: %.4f\ta2%d: %.4f\ta3%d: %.4f\ta4%d: %.4f" % (i, self.filter[0](i), i, self.filter[1](i), i, self.filter[2](i), i, self.filter[3](i), i, self.filter[4](i)))
+        # for i in range(1,9,1):
+        #     print("b1%d: %.4f\tb2%d: %.4f\tb3%d: %.4f\tb4%d: %.4f" % (i, self.filter[5](i), i, self.filter[6](i), i, self.filter[7](i), i, self.filter[8](i)))
+        # exit(0)
 
-    def get_output(self):
-        """Returns accumulated output values
+    def getOutput(self):
+        """
+        Returns accumulated output values
         @return list of float/int accumulated output values, filtered through forward-backward filtering
         """
         tempfrequencylist = [
@@ -165,7 +170,8 @@ class Butter(object):
         return output
 
     def send(self, data):
-        """Send data to Butterworth filter
+        """
+        Send data to Butterworth filter
         @param data list of floats amplitude data to take in
         @return values from the filtered data, with forward filtering
         """
@@ -177,16 +183,246 @@ class Butter(object):
         times = []
         np.set_printoptions(precision=4, suppress=True)
         for amplitude in data:
+            t1 = time.time()
+            # output.append(filterHelper(amplitude, self.frequencylist, self.newfilter, self.N))
             newamp = _filterHelper(
                 amplitude, self.frequencylist, self.filter, self.N)
             output.append(newamp)
+            # raw_input()
+            # output.append(self._filterHelper5(amplitude, self.frequencylist))
+            times.append(time.time() - t1)
         self.output += output
         print("fastest possible frequency for real-time filtering: %f" %
               (1.0 / (sum(times) / (len(times)))))
         return output
 
-    def _basic_filter_variables(self):
-        """Returns basic filter variables
+    # def _filterHelper(self, stacklist, m=0):
+    #     """
+    #     Helper for the butterworth filter
+    #     @params stacklist list of Stacks containing necessary variables
+    #     @params m int counter
+    #     @return output of filter for the specific input
+    #     """
+    #     # setup
+    #     k = m + 1
+    #     xn = []
+    #     for i in range(5):
+    #         if stacklist[m].empty():
+    #             xn.append(0)
+    #         else:
+    #             xn.append(stacklist[m].get_nowait())
+    #     yn = []
+    #     for i in range(5):
+    #         if stacklist[k].empty():
+    #             yn.append(0)
+    #         else:
+    #             yn.append(stacklist[k].get_nowait())
+    #     # calculation
+    #     newyn = self.filter[0][k] * (
+    #         xn[0] +
+    #         self.filter[1][k] * xn[1] +
+    #         self.filter[2][k] * xn[2] +
+    #         self.filter[3][k] * xn[3] +
+    #         self.filter[4][k] * xn[4]
+    #     ) - (
+    #         self.filter[5][k] * yn[0] +
+    #         self.filter[6][k] * yn[1] +
+    #         self.filter[7][k] * yn[2] +
+    #         self.filter[8][k] * yn[3]
+    #     )
+    #     # setup for next iteration
+    #     for i in range(3, -1, -1):
+    #         stacklist[m].put_nowait(xn[i])
+    #     for i in range(2, -1, -1):
+    #         stacklist[k].put_nowait(yn[i])
+    #     stacklist[k].put_nowait(newyn)
+    #     # print m, newyn
+    #     # base case
+    #     if k >= self.N / 2:
+    #         # return if k==self.N/2
+    #         # raw_input()
+    #         return newyn
+    #     # recurse if not at end
+    #     return self._filterHelper(stacklist, m=m + 1)
+    #
+    # def _filterHelper2(self, x, w, m=0):
+    #     """
+    #     Helper2 for the butterworth filter
+    #     @params x amplitude
+    #     @params w list to store calculated frequencies
+    #     @params m int counter
+    #     @return output of filter for the specific input
+    #     """
+    #     k = m + 1
+    #     # for i in range(5):
+    #     #     print("w[%d]=%f" % (i, w[i]))
+    #     w[4] = self.filter[0][k] * x - (
+    #         self.filter[5][k] * w[3] +
+    #         self.filter[6][k] * w[2] +
+    #         self.filter[7][k] * w[1] +
+    #         self.filter[8][k] * w[0]
+    #     )
+    #     y = w[4] + (
+    #         self.filter[1][k] * w[3] +
+    #         self.filter[2][k] * w[2] +
+    #         self.filter[3][k] * w[1] +
+    #         self.filter[4][k] * w[0]
+    #     )
+    #     for i in range(4):
+    #         w[i] = w[i+1]
+    #
+    #     if k >= self.N/2:
+    #         # return if k==self.N
+    #         # print y
+    #         # raw_input()
+    #         return y
+    #     # recurse if not at end
+    #     return self._filterHelper2(y, w, m=m + 1)
+    #
+    # def _filterHelper3(self, x, w, m=0):
+    #     """
+    #     Helper 3 for the butterworth filter
+    #     @params x amplitude
+    #     @params w list to store calculated frequencies
+    #     @params m counter
+    #     @return output of filter for the specific input
+    #     """
+    #     k = m + 1
+    #     # for i in range(5):
+    #     #     print("w[%d]=%f" % (i, w[i]))
+    #     w[4] = self.filter[0][k] * x - (
+    #         self.filter[5][k] * w[3] +
+    #         self.filter[6][k] * w[2] +
+    #         self.filter[7][k] * w[1] +
+    #         self.filter[8][k] * w[0]
+    #     )
+    #     y = w[4] + (
+    #         self.filter[1][k] * w[3] +
+    #         self.filter[2][k] * w[2] +
+    #         self.filter[3][k] * w[1] +
+    #         self.filter[4][k] * w[0]
+    #     )
+    #     for i in range(4):
+    #         w[i] = w[i+1]
+    #
+    #     return y
+    #
+    # def _filterHelper4(self, x, w, m=0):
+    #     """
+    #     Helper 4 for the butterworth filter
+    #     @params x amplitude
+    #     @params w list to store calculated frequencies
+    #     @params m counter
+    #     @return output of filter for the specific input
+    #     """
+    #     k = m + 1
+    #
+    #     previousx = w[m]
+    #     previousy = w[k]
+    #
+    #     previousx[4] = x
+    #
+    #     ym = self.filter[0][k] * (
+    #         x +
+    #         self.filter[1][k] * previousx[3] +
+    #         self.filter[2][k] * previousx[2] +
+    #         self.filter[3][k] * previousx[1] +
+    #         self.filter[4][k] * previousx[0]
+    #     ) - (
+    #         self.filter[5][k] * previousy[3] +
+    #         self.filter[6][k] * previousy[2] +
+    #         self.filter[7][k] * previousy[1] +
+    #         self.filter[8][k] * previousy[0]
+    #     )
+    #
+    #     previousy[4] = ym
+    #
+    #     for i in range(len(previousx) - 1):
+    #         previousx[i] = previousx[i+1]
+    #
+    #     if k < self.N / 2:
+    #         return self._filterHelper4(ym, w, m=m+1)
+    #     else:
+    #         for i in range(len(previousy) - 1):
+    #             previousy[i] = previousy[i+1]
+    #         return ym
+    #
+    # def _filterHelper5(self, x, w):
+    #     return filterHelper(x, np.array(w), self.newfilter, self.N)
+    #
+    # def _filterHelper6(self, x, w):
+    #     """
+    #     Helper 4 for the butterworth filter
+    #     @params x amplitude
+    #     @params w list to store calculated frequencies
+    #     @params m counter
+    #     @return output of filter for the specific input
+    #     """
+    #     previousx = w[0]
+    #     previousy = w[1]
+    #
+    #     previousx[4] = x
+    #     for m in range(self.N/2):
+    #
+    #         k=m+1
+    #
+    #         previousx = w[m]
+    #         previousy = w[k]
+    #
+    #         ym = self.filter[0][k] * (
+    #             previousx[4] +
+    #             self.filter[1][k] * previousx[3] +
+    #             self.filter[2][k] * previousx[2] +
+    #             self.filter[3][k] * previousx[1] +
+    #             self.filter[4][k] * previousx[0]
+    #         ) - (
+    #             self.filter[5][k] * previousy[3] +
+    #             self.filter[6][k] * previousy[2] +
+    #             self.filter[7][k] * previousy[1] +
+    #             self.filter[8][k] * previousy[0]
+    #         )
+    #
+    #         previousy[4] = ym
+    #
+    #         for i in range(len(previousx) - 1):
+    #             previousx[i] = previousx[i+1]
+    #
+    #     for i in range(len(previousy) - 1):
+    #         previousy[i] = previousy[i+1]
+    #     return ym
+    #
+    # def getTransform(self, btype):
+    #     """
+    #     @param btype string type of filter
+    #         lowpass
+    #         highpass
+    #         bandpass
+    #         notch
+    #         bandstop
+    #     return lambda z analog filter function
+    #     """
+    #     if btype not in ["lowpass", "highpass", "bandpass", "notch"]:
+    #         raise ValueError("ButterBase.getFilter: invalid btype %s" % btype)
+    #     var = {
+    #         "lowpass": _lowpassFilterVariables,
+    #         "highpass": _highpassFilterVariables,
+    #         "bandpass": _bandpassFilterVariables,
+    #         "notch": _notchFilterVariables,
+    #         "bandstop": _bandstopFilterVariables
+    #     }[btype]()
+    #
+    #     def transform(z):
+    #         """
+    #         This will be the filter function to return
+    #         """
+    #         factors = map(
+    #             var[0][k] * (1 + var[1][k] * (z**(-1)) + var[2][k] * (z**(-2)) + var[3][k] * (z**(-3)) + var[4][k] * (z**(-4))) / (1 + var[5][k] * (z**(-1)) + var[6][k] * (z**(-2)) + var[7][k] * (z**(-3)) + var[8][k] * (z**(-4))), [i for i in range(1, self.N / 2 + 1)])
+    #         return reduce(lambda x, y: x * y, factors)
+    #     return transform
+
+    def _basicFilterVariables(self):
+        """
+        returns basic filter variables
         @return dictionary key:string variable value: lambda k
         """
         basic = np.zeros((9, (self.N / 2)))
@@ -207,11 +443,12 @@ class Butter(object):
 
         return basic
 
-    def _lowpass_filter_variables(self):
-        """Returns lowpass filter variables
+    def _lowpassFilterVariables(self):
+        """
+        returns lowpass filter variables
         @return dictionary key:string variable value: lambda k
         """
-        basic = self._basic_filter_variables()
+        basic = self._basicFilterVariables()
 
         Op = 2 * (math.pi * self.fc / self.fs)
         vp = 2 * math.atan(self.wc / 2.0)
@@ -239,11 +476,12 @@ class Butter(object):
             lowpass[8][k] = basic[8][k]
         return lowpass
 
-    def _highpass_filter_variables(self):
-        """Returns highpass filter variables
+    def _highpassFilterVariables(self):
+        """
+        returns highpass filter variables
         @return dictionary key:string variable value: lambda k
         """
-        basic = self._basic_filter_variables()
+        basic = self._basicFilterVariables()
         Op = 2 * (math.pi * float(self.fc) / self.fs)
         vp = 2 * math.atan(self.wc / 2.0)
 
@@ -267,11 +505,12 @@ class Butter(object):
             highpass[8][k] = basic[8][k]
         return highpass
 
-    def _bandpass_filter_variables(self):
-        """Returns bandpass filter variables
+    def _bandpassFilterVariables(self):
+        """
+        returns bandpass filter variables
         @return dictionary key:string variable value: lambda k
         """
-        basic = self._basic_filter_variables()
+        basic = self._basicFilterVariables()
         Op1 = 2 * (math.pi * (self.f1) / self.fs)
         Op2 = 2 * (math.pi * (self.f2) / self.fs)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
@@ -284,10 +523,10 @@ class Butter(object):
             C = 1 - basic[5][k] * B + basic[6][k] * (B**2)
 
             bandpass[0][k] = basic[0][k] * ((1 - B)**2) / C
-            bandpass[1][k] = 0
+            bandpass[1][k] = 0  # -basic[1][k]
             bandpass[2][k] = -basic[1][k]
-            bandpass[3][k] = 0
-            bandpass[4][k] = basic[2][k]
+            bandpass[3][k] = 0  # basic[3][k]
+            bandpass[4][k] = basic[2][k]  # basic[4][k]
             bandpass[5][k] = (A / C) * (B * (basic[5][k] -
                                              2 * basic[6][k]) + (basic[5][k] - 2))
             bandpass[6][k] = (1 / C) * ((A**2) * (1 - basic[5][k] + basic[6][k]) +
@@ -297,11 +536,12 @@ class Butter(object):
             bandpass[8][k] = (1 / C) * ((B**2) - basic[5][k] * B + basic[6][k])
         return bandpass
 
-    def _notch_filter_variables(self):
-        """Returns notch filter variables
+    def _notchFilterVariables(self):
+        """
+        returns notch filter variables
         @return dictionary key:string variable value: lambda k
         """
-        basic = self._basic_filter_variables()
+        basic = self._basicFilterVariables()
         x = 1.0
         f1 = (1.0 - (x / 100)) * self.fc
         f2 = (1.0 + (x / 100)) * self.fc
@@ -338,11 +578,12 @@ class Butter(object):
                  basic[6][k])
         return notch
 
-    def _bandstop_filter_variables(self):
-        """Returns bandstop filter variables
+    def _bandstopFilterVariables(self):
+        """
+        returns bandstop filter variables
         @return dictionary key:string variable value: lambda k
         """
-        basic = self._basic_filter_variables()
+        basic = self._basicFilterVariables()
         Op1 = 2 * (math.pi * self.f1 / self.fs)
         Op2 = 2 * (math.pi * self.f2 / self.fs)
         alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
@@ -375,3 +616,12 @@ class Butter(object):
                  basic[5][k] * B +
                  basic[6][k])
         return bandstop
+
+
+def main():
+    Butter(btype="bandpass", cutoff=100, cutoff1=200,
+           cutoff2=300, rolloff=48, sampling=3109)
+
+
+if __name__ == "__main__":
+    main()
