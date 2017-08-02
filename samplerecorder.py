@@ -8,12 +8,12 @@ import time
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
-CHUNK = 256
+CHUNK = 64
 RECORD_SECONDS = 10
 WAVE_OUTPUT_FILENAME = "file.wav"
 
-T = "lowpass"
-butter = Butter(cutoff=10000, cutoff1=85, cutoff2=10000, rolloff=48, sampling=RATE, btype="%s" % T)
+T = "bandstop"
+butter = Butter(cutoff=10000, cutoff1=85, cutoff2=180, rolloff=48, sampling=RATE, btype="%s" % T)
 
 audio = pyaudio.PyAudio()
 
