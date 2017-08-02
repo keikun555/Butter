@@ -12,7 +12,7 @@ CHUNK = 64
 RECORD_SECONDS = 10
 WAVE_OUTPUT_FILENAME = "file.wav"
 
-T = "bandstop"
+T = "lowpass"
 butter = Butter(cutoff=10000, cutoff1=85, cutoff2=180, rolloff=48, sampling=RATE, btype="%s" % T)
 
 audio = pyaudio.PyAudio()
@@ -33,12 +33,12 @@ lock = threading.Lock()
 def filterOutStream(data, lock):
     # print streamOUT.get_write_available()
     t1 = time.time()
+    lock.acquire()
     fil = butter.send(np.fromstring(data, dtype=np.int16).tolist())
     dt = time.time() - t1
     # print 1.0/(dt/64)
     # d += np.fromstring(data, dtype=np.int16).tolist()
     fil = (np.array(fil).astype(np.int16)).tostring()
-    lock.acquire()
     streamOUT.write(fil)
     lock.release()
 

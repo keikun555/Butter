@@ -8,7 +8,7 @@ __all__ = ["Butter"]
 __version__ = "1.0"
 __author__ = "Kei Imada"
 
-import math
+
 import numpy as np
 from numba import jit
 import time
@@ -83,7 +83,7 @@ class Butter(object):
                     filter(lambda k: type(k[1]) in [int, float],
                            zip(["cutoff", "cutoff1", "cutoff2", "rolloff", "sampling"],
                                [cutoff, cutoff1, cutoff2, rolloff, sampling])
-                               )
+                           )
                     )
         if None in [rolloff, sampling]:
             raise ValueError(
@@ -119,16 +119,16 @@ class Butter(object):
         f1 = cutoff1
         f2 = cutoff2
         B = 99.99
-        wp = .3 * math.pi
+        wp = .3 * np.pi
         ws = 2 * wp
         d1 = B / 100.0
-        d2 = 10**(math.log10(d1) - (A / 20.0))
-        self.N = int(math.ceil((math.log10(((1 / (d1**2)) - 1) /
-                                           ((1 / (d2**2)) - 1))) / (2 * math.log10(wp / ws))))
+        d2 = 10**(np.log10(d1) - (A / 20.0))
+        self.N = int(np.ceil((np.log10(((1 / (d1**2)) - 1) /
+                                       ((1 / (d2**2)) - 1))) / (2 * np.log10(wp / ws))))
         if self.N % 2 == 1:
             self.N += 1
-        self.wc = 10**(math.log10(wp) - (1.0 / (2 * self.N))
-                       * math.log10((1 / (d1**2)) - 1))
+        self.wc = 10**(np.log10(wp) - (1.0 / (2 * self.N))
+                       * np.log10((1 / (d1**2)) - 1))
         self.fs = fs
         self.fc = Oc
         self.f1 = f1
@@ -148,7 +148,7 @@ class Butter(object):
             "bandpass": self.__bandpass_filter_variables,
             "notch": self.__notch_filter_variables,
             "bandstop": self.__bandstop_filter_variables
-            }[btype]()
+        }[btype]()
 
     def get_output(self):
         """Returns accumulated output values
@@ -156,7 +156,7 @@ class Butter(object):
         """
         tempfrequencylist = [
             [0 for i in range(5
-)] for j in range(self.N / 2 + 1)]
+                              )] for j in range(self.N / 2 + 1)]
         data = self.output[:]
         data.reverse()
         output = []
@@ -189,7 +189,7 @@ class Butter(object):
         basic = np.zeros((9, (self.N / 2)))
         for k in range(self.N / 2):
             a = self.wc * \
-                math.sin((float(2.0 * (k + 1) - 1) / (2.0 * self.N)) * math.pi)
+                np.sin((float(2.0 * (k + 1) - 1) / (2.0 * self.N)) * np.pi)
             B = 1 + a + ((self.wc**2) / 4.0)
             basic[0][k] = (self.wc**2) / (4.0 * B)
             basic[1][k] = 2
@@ -210,18 +210,18 @@ class Butter(object):
         """
         basic = self.__basic_filter_variables()
 
-        Op = 2 * (math.pi * self.fc / self.fs)
-        vp = 2 * math.atan(self.wc / 2.0)
+        Op = 2 * (np.pi * self.fc / self.fs)
+        vp = 2 * np.atan(self.wc / 2.0)
 
-        alpha = math.sin((vp - Op) / 2.0) / \
-            math.sin((vp + Op) / 2.0)
+        alpha = np.sin((vp - Op) / 2.0) / \
+            np.sin((vp + Op) / 2.0)
 
         lowpass = np.zeros((9, (self.N / 2)))
         for k in range(self.N / 2):
             C = 1 - basic[5][k] * \
                 alpha + basic[6][k] * (alpha**2)
             a = self.wc * \
-                math.sin((float(2.0 * (k + 1) - 1) / (2.0 * self.N)) * math.pi)
+                np.sin((float(2.0 * (k + 1) - 1) / (2.0 * self.N)) * np.pi)
             B = 1 + a + ((self.wc**2) / 4.0)
             lowpass[0][k] = ((1 - alpha)**2) * basic[0][k] / C
             lowpass[1][k] = basic[1][k]
@@ -241,11 +241,11 @@ class Butter(object):
         @return dictionary key:string variable value: lambda k
         """
         basic = self.__basic_filter_variables()
-        Op = 2 * (math.pi * float(self.fc) / self.fs)
-        vp = 2 * math.atan(self.wc / 2.0)
+        Op = 2 * (np.pi * float(self.fc) / self.fs)
+        vp = 2 * np.atan(self.wc / 2.0)
 
-        alpha = -(math.cos((vp + Op) / (2.0))) / \
-            (math.cos((vp - Op) / (2.0)))
+        alpha = -(np.cos((vp + Op) / (2.0))) / \
+            (np.cos((vp - Op) / (2.0)))
 
         highpass = np.zeros((9, (self.N / 2)))
         for k in range(self.N / 2):
@@ -269,10 +269,10 @@ class Butter(object):
         @return dictionary key:string variable value: lambda k
         """
         basic = self.__basic_filter_variables()
-        Op1 = 2 * (math.pi * (self.f1) / self.fs)
-        Op2 = 2 * (math.pi * (self.f2) / self.fs)
-        alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
-        k = (self.wc / 2.0) / math.tan((Op2 - Op1) / 2.0)
+        Op1 = 2 * (np.pi * (self.f1) / self.fs)
+        Op2 = 2 * (np.pi * (self.f2) / self.fs)
+        alpha = np.cos((Op2 + Op1) / 2.0) / np.cos((Op2 - Op1) / 2.0)
+        k = (self.wc / 2.0) / np.tan((Op2 - Op1) / 2.0)
         A = 2 * alpha * k / (k + 1)
         B = (k - 1) / (k + 1)
 
@@ -302,10 +302,10 @@ class Butter(object):
         x = 1.0
         f1 = (1.0 - (x / 100)) * self.fc
         f2 = (1.0 + (x / 100)) * self.fc
-        Op1 = 2 * (math.pi * f1 / self.fs)
-        Op2 = 2 * (math.pi * f2 / self.fs)
-        alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
-        k = (self.wc / 2.0) * math.tan((Op2 - Op1) / 2.0)
+        Op1 = 2 * (np.pi * f1 / self.fs)
+        Op2 = 2 * (np.pi * f2 / self.fs)
+        alpha = np.cos((Op2 + Op1) / 2.0) / np.cos((Op2 - Op1) / 2.0)
+        k = (self.wc / 2.0) * np.tan((Op2 - Op1) / 2.0)
         A = 2 * alpha / (k + 1)
         B = (1 - k) / (1 + k)
 
@@ -340,10 +340,10 @@ class Butter(object):
         @return dictionary key:string variable value: lambda k
         """
         basic = self.__basic_filter_variables()
-        Op1 = 2 * (math.pi * self.f1 / self.fs)
-        Op2 = 2 * (math.pi * self.f2 / self.fs)
-        alpha = math.cos((Op2 + Op1) / 2.0) / math.cos((Op2 - Op1) / 2.0)
-        k = (self.wc / 2.0) * math.tan((Op2 - Op1) / 2.0)
+        Op1 = 2 * (np.pi * self.f1 / self.fs)
+        Op2 = 2 * (np.pi * self.f2 / self.fs)
+        alpha = np.cos((Op2 + Op1) / 2.0) / np.cos((Op2 - Op1) / 2.0)
+        k = (self.wc / 2.0) * np.tan((Op2 - Op1) / 2.0)
         A = 2 * alpha / (k + 1)
         B = (1 - k) / (1 + k)
 
