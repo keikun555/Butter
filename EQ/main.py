@@ -19,10 +19,10 @@ class KEQ(object):
         self.master = master
         self.filter = EQFilter()
         self.initUI()
-        atexit.register()
 
     def destructor(self):
         self.filter.close()
+        self.master.destroy()
 
     def initUI(self):
         self.master.title("KEQ")
@@ -56,7 +56,7 @@ class KEQ(object):
 
         # record
         record.rl1 = Label(record, text=" OR ")
-        record.recordButton = Button(record, text="record")
+        record.recordButton = Button(record, text="record/stop", command=self.filter.switch_record_check)
         record.rl2 = Label(record, text=" with sampling ")
         record.samplingEntry = Entry(record)
         record.rl3 = Label(record, text=" Hz")
@@ -67,8 +67,10 @@ class KEQ(object):
         record.rl3.grid(row=0, column=4)
 
         # control
-        control.playButton = Button(control, text="Play")
-        control.stopButton = Button(control, text="Stop")
+        control.playButton = Button(
+            control, text="Play", command=self.filter.play)
+        control.stopButton = Button(
+            control, text="Stop", command=self.filter.stop)
         control.playButton.grid(row=0, column=0)
         control.stopButton.grid(row=0, column=1)
 
@@ -208,22 +210,27 @@ class KEQ(object):
         # link open file/clear file button to entry and put validation in entry
         def openButtonClicked(*args):
             fileio.filename = filedialog.askopenfilename(
-                initialdir="/", title="Select file", filetypes=(("audio files", "*.wav"), ("all files", "*.*")))
+                initialdir="~", title="Select file", filetypes=(("audio files", "*.wav"), ("all files", "*.*")))
             fileio.filepathEntry.delete(0, END)
-            fileio.filepathEntry.insert(0, filename)
+            fileio.filepathEntry.insert(0, fileio.filename)
+            self.filter.open(fileio.filename)
+            try:
+                self.filter.open(fileio.filename)
+            except Exception as e:
+                tkMessageBox.showerror("File Error", e)
         fileio.openButton.configure(command=openButtonClicked)
 
         def onFilePathChanged(*args):
             try:
-                open(fileio.fileVar.get())
-                return True
-            except:
-                return False
+                self.filter.open(fileio.filename)
+            except Exception as e:
+                tkMessageBox.showerror("File Error", e)
         fileio.filepathEntry.configure(validate="focusout",
                                        validatecommand=onFilePathChanged)
 
         def onClearButtonClicked(*args):
             fileio.fileVar.set("")
+            self.filter.reset()
         fileio.clearButton.configure(command=onClearButtonClicked)
 
         # filter button
@@ -238,7 +245,7 @@ def main():
     root.style.theme_use("clam")
     # root.geometry("250x150+300+300")
     app = KEQ(master=root)
-    root.protocol("WM_DELETE_WINDOW", app.destructor())
+    root.protocol("WM_DELETE_WINDOW", app.destructor)
     root.mainloop()
 
 
