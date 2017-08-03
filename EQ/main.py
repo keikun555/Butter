@@ -21,6 +21,9 @@ class KEQ(object):
         self.initUI()
         atexit.register()
 
+    def destructor(self):
+        self.filter.close()
+
     def initUI(self):
         self.master.title("KEQ")
         fileio = Frame(self.master)
@@ -235,6 +238,7 @@ def main():
     root.style.theme_use("clam")
     # root.geometry("250x150+300+300")
     app = KEQ(master=root)
+    root.protocol("WM_DELETE_WINDOW", app.destructor())
     root.mainloop()
 
 

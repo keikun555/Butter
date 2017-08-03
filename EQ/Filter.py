@@ -20,6 +20,7 @@ RATE = 44100
 CHUNK = 64
 
 
+
 class EQFilter(object):
     def __init__(self):
         self.filter = None
@@ -45,9 +46,8 @@ class EQFilter(object):
         self.filter_thread.start()
         self.play_thread.start()
         self.record_thread.start()
-        atexit.register(self._destructor)
 
-    def _destructor(self):
+    def close(self):
         self.on = False
         self.filter_thread.join()
         self.play_thread.join()
