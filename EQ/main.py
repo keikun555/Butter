@@ -4,7 +4,7 @@ User Interface for EQ App
 """
 
 
-from Tkinter import Tk, StringVar, IntVar, Scale, VERTICAL, END, CENTER, DISABLED, NORMAL
+from Tkinter import Tk, StringVar, IntVar, DoubleVar, Scale, VERTICAL, END, CENTER, DISABLED, NORMAL
 from ttk import Frame, Label, Entry, Button, OptionMenu, Style, Checkbutton
 import tkFileDialog as filedialog
 import tkMessageBox
@@ -56,7 +56,8 @@ class KEQ(object):
 
         # record
         record.rl1 = Label(record, text=" OR ")
-        record.recordButton = Button(record, text="record/stop", command=self.filter.switch_record_check)
+        record.recordButton = Button(
+            record, text="record/stop", command=self.filter.switch_record_check)
         record.rl2 = Label(record, text=" with sampling ")
         record.samplingEntry = Entry(record)
         record.rl3 = Label(record, text=" Hz")
@@ -68,9 +69,9 @@ class KEQ(object):
 
         # control
         control.playButton = Button(
-            control, text="Play", command=self.filter.play)
+            control, text="Play", command=lambda *args: self.filter.play(True))
         control.stopButton = Button(
-            control, text="Stop", command=self.filter.stop)
+            control, text="Pause", command=lambda *args: self.filter.play(False))
         control.playButton.grid(row=0, column=0)
         control.stopButton.grid(row=0, column=1)
 
@@ -90,65 +91,104 @@ class KEQ(object):
 
         # used in initializing the slider frames
         def initSlider(master, text, mini, maxi, log=False):
+            master.value = DoubleVar()
+            master.value.set(mini)
             if log:
-                mini = np.log10(mini)
-                maxi = np.log10(maxi)
-            slider = Scale(master, from_=maxi, to=mini, orient=VERTICAL,
-                           showvalue=False, resolution=.000000000000001, length=200)
-            # slider.configure(command=lambda val: logScale(slider, val))
+                slider_mini = np.log10(mini)
+                slider_maxi = np.log10(maxi)
+            else:
+                slider_mini = mini
+                slider_maxi = maxi
+            slider_value = DoubleVar()
+            slider_value.set(slider_mini)
             master.mini = mini
             master.maxi = maxi
-            slider.set(mini)
-            master.value = mini
-            entry = Entry(master, width=8, justify=CENTER)
+            master.slider_mini = slider_mini
+            master.slider_maxi = slider_maxi
+            slider = Scale(
+                master, from_=slider_maxi, to=slider_mini, orient=VERTICAL,
+                variable=slider_value, showvalue=False,
+                resolution=.000000000000001, length=200)
+
+            entry_value = StringVar()
+            entry_value.set("%.2f" % mini)
+            entry = Entry(master, width=8, justify=CENTER, textvariable=entry_value)
             label = Label(master, text=text)
             slider.grid(row=1, column=0)
             entry.grid(row=2, column=0)
             label.grid(row=0, column=0)
 
-            def updateEntry(ent, val):
-                ent.delete(0, END)
-                ent.insert(0, val)
-
-            def sliderInit(slider, entry, val):
+            # def updateEntry(ent, val):
+            #     ent.delete(0, END)
+            #     ent.insert(0, val)
+            #
+            # def sliderInit(slider, entry, val):
+            #     if log:
+            #         val = "%.2f" % 10**(float(val))
+            #     else:
+            #         val = "%.2f" % float(val)
+            #     updateEntry(entry, val)
+            #     master.value.set(val)
+            #
+            # slider.configure(
+            #     command=lambda val: sliderInit(slider, entry, val))
+            def sliderTrace(*args):
+                val = slider_value.get()
                 if log:
-                    val = "%.2f" % 10**(float(val))
-                else:
-                    val = "%.2f" % float(val)
-                updateEntry(entry, val)
-                master.value = val
+                    val = 10**val
+                entry_value.set("%.2f" % val)
+                master.value.set(val)
+            slider_trace_var = slider_value.trace_variable("w", sliderTrace)
 
-            slider.configure(
-                command=lambda val: sliderInit(slider, entry, val))
-
-            def updateSlider(slider, val):
-                val = float(val)
-                if val < mini:
-                    slider.set(mini)
-                elif val > maxi:
-                    slider.set(maxi)
-                else:
-                    slider.set(val)
-
-            def entryInit(slider, entry, val):
+            # def updateSlider(slider, val):
+            #     val = float(val)
+            #     if val < mini:
+            #         slider.set(mini)
+            #     elif val > maxi:
+            #         slider.set(maxi)
+            #     else:
+            #         slider.set(val)
+            #
+            # def entryInit(slider, entry, val):
+            #     try:
+            #         val = float(val)
+            #         master.value.set(val)
+            #         if log:
+            #             val = np.log10(val)
+            #         updateSlider(slider, val)
+            #         return True
+            #     except:
+            #         return False
+            # # entrySV = StringVar()
+            # # entrySV.trace("w", lambda name, index, mode, sv=entrySV: entryInit(sv.get()))
+            # entry.configure(validate="focusout",
+            #                 validatecommand=lambda: entryInit(slider, entry, entry.get()))
+            # # entry.configure(textvariable=entrySV)
+            def entryTrace(*args):
                 try:
-                    val = float(val)
+                    val = float(entry_value.get())
+                    master.value.set(val)
                     if log:
                         val = np.log10(val)
-                    updateSlider(slider, val)
-                    master.value = val
+                    slider_value.set(val)
+                except ValueError:
+                    pass
+            entry_trace_var = entry_value.trace_variable("w", entryTrace)
+
+            def entryValidate(*args):
+                try:
+                    float(entry_value.get())
                     return True
                 except:
                     return False
-            # entrySV = StringVar()
-            # entrySV.trace("w", lambda name, index, mode, sv=entrySV: entryInit(sv.get()))
-            entry.configure(validate="focusout",
-                            validatecommand=lambda: entryInit(slider, entry, entry.get()))
-            # entry.configure(textvariable=entrySV)
+            entry.configure(validate="key", validatecommand=entryValidate)
 
             def update_value(value):
-                master.value = value
-                sliderInit(slider, entry, value)
+                master.value.set(value)
+                entry_value.set(str(value))
+                if log:
+                    value = np.log10(value)
+                slider_value.set(value)
 
             master.entry = entry
             master.label = label
@@ -156,7 +196,7 @@ class KEQ(object):
             master.update_value = update_value
 
         # rolloff
-        initSlider(rolloff, "rolloff", 0, 100)
+        initSlider(rolloff, "rolloff", 1, 100)
 
         # cutoff
         initSlider(cutoff, "cutoff", 20, 20000, log=True)
@@ -165,7 +205,7 @@ class KEQ(object):
         initSlider(lcutoff, "lcutoff", 20, 20000, log=True)
 
         # hcutoff
-        initSlider(hcutoff, "hcutoff", 20, 20000, log=True)
+        initSlider(hcutoff, "hcutoff", 21, 20001, log=True)
 
         sliderFrames = [rolloff, cutoff, lcutoff, hcutoff]
 
@@ -189,6 +229,10 @@ class KEQ(object):
                 hcutoff.entry.configure(state=DISABLED)
                 rolloff.update_value(rolloff.mini)
                 cutoff.update_value(cutoff.mini)
+                filter_rolloff = float(rolloff.entry.get())
+                filter_cutoff = float(cutoff.entry.get())
+                self.filter.reload_filter(
+                    btype=chosen.lower(), rolloff=filter_rolloff, cutoff=filter_cutoff)
             elif chosen in cutoff2:
                 rolloff.scale.configure(state=NORMAL)
                 rolloff.entry.configure(state=NORMAL)
@@ -201,6 +245,12 @@ class KEQ(object):
                 rolloff.update_value(rolloff.mini)
                 lcutoff.update_value(cutoff.mini)
                 hcutoff.update_value(cutoff.mini)
+                filter_rolloff = float(rolloff.entry.get())
+                filter_lcutoff = float(lcutoff.entry.get())
+                filter_hcutoff = float(hcutoff.entry.get())
+                self.filter.reload_filter(
+                    btype=chosen.lower(), rolloff=filter_rolloff,
+                    cutoff1=filter_lcutoff, cutoff2=filter_hcutoff)
             else:
                 for frame in sliderFrames:
                     frame.scale.configure(state=DISABLED)
@@ -213,7 +263,6 @@ class KEQ(object):
                 initialdir="~", title="Select file", filetypes=(("audio files", "*.wav"), ("all files", "*.*")))
             fileio.filepathEntry.delete(0, END)
             fileio.filepathEntry.insert(0, fileio.filename)
-            self.filter.open(fileio.filename)
             try:
                 self.filter.open(fileio.filename)
             except Exception as e:
@@ -235,8 +284,30 @@ class KEQ(object):
 
         # filter button
         def onFilterButtonChecked(*args):
-            self.filter.update_filter_check(dfilter.filterCheck.get() == 1)
+            self.filter.filter_(dfilter.filterCheck.get() == 1)
         dfilter.filterButton.configure(command=onFilterButtonChecked)
+
+        # linking slider modules to self.filter
+        rolloff.value.trace(
+            "w", lambda *args: self.filter.reload_filter(rolloff=rolloff.value.get()))
+        cutoff.value.trace(
+            "w", lambda *args: self.filter.reload_filter(cutoff=cutoff.value.get()))
+        lcutoff.value.trace(
+            "w", lambda *args: self.filter.reload_filter(cutoff1=lcutoff.value.get()))
+        hcutoff.value.trace(
+            "w", lambda *args: self.filter.reload_filter(cutoff2=hcutoff.value.get()))
+
+        # disabling lcutoff >= hcutoff event
+        def lcutoff_hcutoff_reaction(*args):
+            if lcutoff.value.get() >= hcutoff.value.get():
+                hcutoff.update_value(lcutoff.value.get() + 1)
+
+        def hcutoff_lcutoff_reaction(*args):
+            if lcutoff.value.get() >= hcutoff.value.get():
+                lcutoff.update_value(hcutoff.value.get() - 1)
+
+        hcutoff.value.trace("w", hcutoff_lcutoff_reaction)
+        lcutoff.value.trace("w", lcutoff_hcutoff_reaction)
 
 
 def main():

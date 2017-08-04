@@ -70,13 +70,13 @@ class Butter(object):
         bandpass filter required arguments
             @param cutoff1 float measured in Hz
             @param cutoff2 float measured in Hz
-            cutoff1 =< cutoff2
+            cutoff1 < cutoff2
         notch filter required arguments
             @param cutoff float measured in Hz
         bandstop filter required arguments
             @param cutoff1 float measured in Hz
             @param cutoff2 float measured in Hz
-            cutoff1 =< cutoff2
+            cutoff1 < cutoff2
         """
         # input checking
         valid = map(lambda k: k[0],
@@ -211,7 +211,7 @@ class Butter(object):
         basic = self.__basic_filter_variables()
 
         Op = 2 * (np.pi * self.fc / self.fs)
-        vp = 2 * np.atan(self.wc / 2.0)
+        vp = 2 * np.arctan(self.wc / 2.0)
 
         alpha = np.sin((vp - Op) / 2.0) / \
             np.sin((vp + Op) / 2.0)
@@ -242,7 +242,7 @@ class Butter(object):
         """
         basic = self.__basic_filter_variables()
         Op = 2 * (np.pi * float(self.fc) / self.fs)
-        vp = 2 * np.atan(self.wc / 2.0)
+        vp = 2 * np.arctan(self.wc / 2.0)
 
         alpha = -(np.cos((vp + Op) / (2.0))) / \
             (np.cos((vp - Op) / (2.0)))
