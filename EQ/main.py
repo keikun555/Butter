@@ -255,6 +255,7 @@ class KEQ(object):
                 for frame in sliderFrames:
                     frame.scale.configure(state=DISABLED)
                     frame.entry.configure(state=DISABLED)
+                self.filter.delete_filter()
         dfilter.dvar.trace("w", onFilterSelection)
 
         # link open file/clear file button to entry and put validation in entry

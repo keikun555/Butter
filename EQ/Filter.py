@@ -14,22 +14,25 @@ import threading
 import Queue
 import wave
 
-FORMAT = pa.paInt16
-CHANNELS = 1
-RATE = 44100
-CHUNK = 256
-
 
 class EQFilter(object):
     def __init__(self):
+        self.pyaudio = pa.PyAudio()
+        self.FORMAT = (pa.paInt16, np.int16)
+        self.CHANNELS = 1
+        self.RATE = 44100
+        self.CHUNK = 256
         self.delete_filter()
-        audio = pa.PyAudio()
-        self.audio_stream_in = audio.open(format=FORMAT, channels=CHANNELS,
-                                          rate=RATE, input=True,
-                                          frames_per_buffer=CHUNK)
-        self.audio_stream_out = audio.open(format=FORMAT, channels=CHANNELS,
-                                           rate=RATE, output=True,
-                                           frames_per_buffer=CHUNK)
+        self.audio_stream_in = self.pyaudio.open(format=self.FORMAT[0],
+                                                 channels=self.CHANNELS,
+                                                 rate=self.RATE, input=True,
+                                                 frames_per_buffer=self.CHUNK)
+        self.audio_stream_out = self.pyaudio.open(format=self.FORMAT[0],
+                                                  channels=self.CHANNELS,
+                                                  rate=self.RATE, output=True,
+                                                  frames_per_buffer=self.CHUNK)
+        self.filter = None
+        self.filter_copy = None
         self.filter_check = False
         self.record_check = False
         self.play_check = False
@@ -46,6 +49,19 @@ class EQFilter(object):
 
     def close(self):
         self.reset()
+
+    def reload_audio_streams(self):
+        self.audio_stream_in.close()
+        self.audio_stream_in = self.pyaudio.open(format=self.FORMAT[0],
+                                                 channels=self.CHANNELS,
+                                                 rate=self.RATE, input=True,
+                                                 frames_per_buffer=self.CHUNK)
+        self.audio_stream_out.close()
+        self.audio_stream_out = self.pyaudio.open(format=self.FORMAT[0],
+                                                  channels=self.CHANNELS,
+                                                  rate=self.RATE, output=True,
+                                                  frames_per_buffer=self.CHUNK)
+
 
     def reload_filter(self, btype=None, cutoff=None,
                       cutoff1=None, cutoff2=None,
@@ -66,12 +82,17 @@ class EQFilter(object):
             self.filter = Butter(self.btype, self.cutoff,
                                  self.cutoff1, self.cutoff2,
                                  self.rolloff, self.sampling)
+            self.filter_copy = Butter(self.btype, self.cutoff,
+                                 self.cutoff1, self.cutoff2,
+                                 self.rolloff, self.sampling)
         except Exception as e:
             print e
             self.filter = None
+            self.filter_copy = None
 
     def delete_filter(self):
         self.filter = None
+        self.filter_copy = None
         self.btype = None
         self.cutoff = None
         self.cutoff1 = None
@@ -109,27 +130,24 @@ class EQFilter(object):
         file_ = wave.open(fin, "r")
         (nchannels, sampwidth, framerate, nframes,
          comptype, compname) = file_.getparams()
-        self.reload_filter(sampling=framerate)
+        self.CHANNELS = nchannels
+        self.RATE = framerate
         if sampwidth == 1:
-            # nbytesframe
-            print "uint8!?"
-            tp = np.uint8
+            self.FORMAT = (pa.paInt8, np.int8)
         else:
-            tp = np.int16
-        # data = np.fromstring(file_.readframes(file_.getnframes()), dtype=tp).tolist()
+            self.FORMAT = (pa.paInt16, np.int16)
+        self.reload_filter(sampling=framerate)
+        self.reload_audio_streams()
 
         def open_thread(file_):
             while True:
-                chunk = file_.readframes(CHUNK)
+                chunk = file_.readframes(self.CHUNK)
                 if chunk == "":
                     break
                 self.raw_queue.put_nowait(chunk)
 
-        if nchannels == 1:
-            thread = threading.Thread(target=open_thread, args=(file_,))
-            thread.start()
-        else:
-            raise NotImplementedError("Stereo not implemented yet sorry :p")
+        thread = threading.Thread(target=open_thread, args=(file_,))
+        thread.start()
 
     def play(self, boolean):
         self.play_check = boolean
@@ -148,17 +166,27 @@ class EQFilter(object):
 
     def __record_process(self, rawQ):
         while self.record_check:
-            rawQ.put_nowait(self.audio_stream_in.read(CHUNK))
+            rawQ.put_nowait(self.audio_stream_in.read(self.CHUNK))
 
     def __filter_play_link(self, filterQ, playQ):
         while self.play_check:
             if not filterQ.empty():
                 chunk = filterQ.get_nowait()
                 if self.filter != None:
-                    chunkL = np.fromstring(chunk, dtype=np.int16).tolist()
-                    filteredChunk = self.filter.send(chunkL)
-                    playQ.put(
-                        (np.array(filteredChunk).astype(np.int16)).tostring())
+                    chunkL = np.fromstring(chunk, dtype=self.FORMAT[1]).tolist()
+                    if self.CHANNELS == 1:
+                        filteredChunk = self.filter.send(chunkL)
+                        playQ.put(
+                            (np.array(filteredChunk).astype(self.FORMAT[1])).tostring())
+                    elif self.CHANNELS == 2:
+                        chunkLL = chunkL[::2]
+                        chunkLR = chunkL[1::2]
+                        chunkLLF = self.filter.send(chunkLL)
+                        chunkLRF = self.filter_copy.send(chunkLR)
+                        chunkF = [None for i in range(len(chunkLLF) + len(chunkLRF))]
+                        chunkF[::2] = chunkLLF
+                        chunkF[1::2] = chunkLRF
+                        playQ.put(chunkF)
                 else:
                     playQ.put(chunk)
 
