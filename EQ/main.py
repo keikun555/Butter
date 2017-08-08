@@ -16,16 +16,24 @@ from Filter import *
 class KEQ(object):
 
     def __init__(self, master):
+        """The constructor for the KEQ app
+        @params master the root parent for the KEQ app
+        """
         self.master = master
         self.filter = EQFilter()
         self.initUI()
 
     def destructor(self):
-        self.filter.close()
+        """Destructor for the KEQ app, closes open streams"""
+        self.filter.reset()
         self.master.destroy()
 
     def initUI(self):
+        """Initializes everything needed for the KEQ app"""
+
         self.master.title("KEQ")
+
+        # Initialize frames
         fileio = Frame(self.master)
         control = Frame(self.master)
         record = Frame(self.master)
@@ -35,6 +43,7 @@ class KEQ(object):
         lcutoff = Frame(self.master)
         hcutoff = Frame(self.master)
 
+        # Position frames
         fileio.grid(row=0, column=0, columnspan=2)
         control.grid(row=1, column=0, columnspan=2)
         record.grid(row=0, column=2, columnspan=2)
@@ -44,7 +53,7 @@ class KEQ(object):
         lcutoff.grid(row=2, column=2)
         hcutoff.grid(row=2, column=3)
 
-        # fileio
+        # Initialize fileio
         fileio.fileVar = StringVar(fileio)
         fileio.fileVar.set("")
         fileio.openButton = Button(fileio, text="Open")
@@ -54,11 +63,12 @@ class KEQ(object):
         fileio.filepathEntry.grid(row=0, column=1, columnspan=2)
         fileio.clearButton.grid(row=0, column=3)
 
-        # record
+        # Initialize record
+        self.recording = False
         record.rl1 = Label(record, text=" OR ")
         record.recordButton = Button(
-            record, text="record/stop", command=self.filter.switch_record_check)
-        record.rl2 = Label(record, text=" with sampling ")
+            record, text="record")
+        record.rl2 = Label(record, text=" with sampling freq ")
         record.samplingEntry = Entry(record)
         record.rl3 = Label(record, text=" Hz")
         record.rl1.grid(row=0, column=0)
@@ -67,7 +77,7 @@ class KEQ(object):
         record.samplingEntry.grid(row=0, column=3)
         record.rl3.grid(row=0, column=4)
 
-        # control
+        # Initialize control
         control.playButton = Button(
             control, text="Play", command=lambda *args: self.filter.play(True))
         control.stopButton = Button(
@@ -75,7 +85,7 @@ class KEQ(object):
         control.playButton.grid(row=0, column=0)
         control.stopButton.grid(row=0, column=1)
 
-        # dfilter
+        # Initialize dfilter
         dfilter.filterOptions = ["Filter type", "None", "Lowpass",
                                  "Highpass", "Bandpass", "Bandstop", "Notch"]
         dfilter.dvar = StringVar(dfilter)
@@ -89,8 +99,9 @@ class KEQ(object):
         dfilter.dropdown.grid(row=0, column=0)
         dfilter.filterButton.grid(row=0, column=2)
 
-        # used in initializing the slider frames
+
         def initSlider(master, text, mini, maxi, log=False):
+            """Used in initializing the slider frames"""
             master.value = DoubleVar()
             master.value.set(mini)
             if log:
@@ -118,21 +129,8 @@ class KEQ(object):
             entry.grid(row=2, column=0)
             label.grid(row=0, column=0)
 
-            # def updateEntry(ent, val):
-            #     ent.delete(0, END)
-            #     ent.insert(0, val)
-            #
-            # def sliderInit(slider, entry, val):
-            #     if log:
-            #         val = "%.2f" % 10**(float(val))
-            #     else:
-            #         val = "%.2f" % float(val)
-            #     updateEntry(entry, val)
-            #     master.value.set(val)
-            #
-            # slider.configure(
-            #     command=lambda val: sliderInit(slider, entry, val))
             def sliderTrace(*args):
+                """Called when slider value changes"""
                 val = slider_value.get()
                 if log:
                     val = 10**val
@@ -140,31 +138,8 @@ class KEQ(object):
                 master.value.set(val)
             slider_trace_var = slider_value.trace_variable("w", sliderTrace)
 
-            # def updateSlider(slider, val):
-            #     val = float(val)
-            #     if val < mini:
-            #         slider.set(mini)
-            #     elif val > maxi:
-            #         slider.set(maxi)
-            #     else:
-            #         slider.set(val)
-            #
-            # def entryInit(slider, entry, val):
-            #     try:
-            #         val = float(val)
-            #         master.value.set(val)
-            #         if log:
-            #             val = np.log10(val)
-            #         updateSlider(slider, val)
-            #         return True
-            #     except:
-            #         return False
-            # # entrySV = StringVar()
-            # # entrySV.trace("w", lambda name, index, mode, sv=entrySV: entryInit(sv.get()))
-            # entry.configure(validate="focusout",
-            #                 validatecommand=lambda: entryInit(slider, entry, entry.get()))
-            # # entry.configure(textvariable=entrySV)
             def entryTrace(*args):
+                """Called when entry value changes"""
                 try:
                     val = float(entry_value.get())
                     master.value.set(val)
@@ -176,6 +151,7 @@ class KEQ(object):
             entry_trace_var = entry_value.trace_variable("w", entryTrace)
 
             def entryValidate(*args):
+                """Called when validation is needed for entry values"""
                 try:
                     float(entry_value.get())
                     return True
@@ -195,16 +171,16 @@ class KEQ(object):
             master.scale = slider
             master.update_value = update_value
 
-        # rolloff
+        # Initialize rolloff
         initSlider(rolloff, "rolloff", 1, 100)
 
-        # cutoff
+        # Initialize cutoff
         initSlider(cutoff, "cutoff", 20, 20000, log=True)
 
-        # lcutoff
+        # Initialize lcutoff
         initSlider(lcutoff, "lcutoff", 20, 20000, log=True)
 
-        # hcutoff
+        # Initialize hcutoff
         initSlider(hcutoff, "hcutoff", 21, 20001, log=True)
 
         sliderFrames = [rolloff, cutoff, lcutoff, hcutoff]
@@ -213,8 +189,52 @@ class KEQ(object):
             frame.scale.configure(state=DISABLED)
             frame.entry.configure(state=DISABLED)
 
+
+
+        # link open file/clear file button to entry and put validation in entry
+        def openButtonClicked(*args):
+            """Called when openButton is pressed"""
+            fileio.filename = filedialog.askopenfilename(
+                initialdir="~", title="Select file", filetypes=(("audio files", "*.wav"), ("all files", "*.*")))
+            fileio.filepathEntry.delete(0, END)
+            fileio.filepathEntry.insert(0, fileio.filename)
+            try:
+                self.filter.open(fileio.filename)
+            except Exception as e:
+                tkMessageBox.showerror("File Error", e)
+        fileio.openButton.configure(command=openButtonClicked)
+
+        def onFilePathChanged(*args):
+            """Called when filepathEntry is changed"""
+            try:
+                self.filter.open(fileio.filename)
+            except Exception as e:
+                tkMessageBox.showerror("File Error", e)
+        fileio.filepathEntry.configure(validate="focusout",
+                                       validatecommand=onFilePathChanged)
+
+        def onClearButtonClicked(*args):
+            """Called when clearButton is pressed"""
+            fileio.fileVar.set("")
+            record.samplingEntry.configure(state=NORMAL)
+            self.filter.reset()
+        fileio.clearButton.configure(command=onClearButtonClicked)
+
+        # defining callback for recordButton
+        def onRecordButtonClicked(*args):
+            """Called when recordButton is clicked"""
+            self.recording = not self.recording
+            if self.recording:
+                record.recordButton.configure(text="stop")
+                record.samplingEntry.configure(state=DISABLED)
+            else:
+                record.recordButton.configure(text="record")
+                self.filter.record(self.recording)
+                record.recordButton.configure(command=onRecordButtonClicked)
+
         # link filter type to sliders
         def onFilterSelection(*args):
+            """Called when filterButton is pressed"""
             chosen = dfilter.dvar.get()
             cutoff1 = ["Lowpass", "Highpass", "Notch"]
             cutoff2 = ["Bandstop", "Bandpass"]
@@ -232,7 +252,7 @@ class KEQ(object):
                 filter_rolloff = float(rolloff.entry.get())
                 filter_cutoff = float(cutoff.entry.get())
                 self.filter.reload_filter(
-                    btype=chosen.lower(), rolloff=filter_rolloff, cutoff=filter_cutoff)
+                btype=chosen.lower(), rolloff=filter_rolloff, cutoff=filter_cutoff)
             elif chosen in cutoff2:
                 rolloff.scale.configure(state=NORMAL)
                 rolloff.entry.configure(state=NORMAL)
@@ -249,43 +269,20 @@ class KEQ(object):
                 filter_lcutoff = float(lcutoff.entry.get())
                 filter_hcutoff = float(hcutoff.entry.get())
                 self.filter.reload_filter(
-                    btype=chosen.lower(), rolloff=filter_rolloff,
-                    cutoff1=filter_lcutoff, cutoff2=filter_hcutoff)
+                btype=chosen.lower(), rolloff=filter_rolloff,
+                cutoff1=filter_lcutoff, cutoff2=filter_hcutoff)
             else:
                 for frame in sliderFrames:
                     frame.scale.configure(state=DISABLED)
                     frame.entry.configure(state=DISABLED)
-                self.filter.delete_filter()
-        dfilter.dvar.trace("w", onFilterSelection)
-
-        # link open file/clear file button to entry and put validation in entry
-        def openButtonClicked(*args):
-            fileio.filename = filedialog.askopenfilename(
-                initialdir="~", title="Select file", filetypes=(("audio files", "*.wav"), ("all files", "*.*")))
-            fileio.filepathEntry.delete(0, END)
-            fileio.filepathEntry.insert(0, fileio.filename)
-            try:
-                self.filter.open(fileio.filename)
-            except Exception as e:
-                tkMessageBox.showerror("File Error", e)
-        fileio.openButton.configure(command=openButtonClicked)
-
-        def onFilePathChanged(*args):
-            try:
-                self.filter.open(fileio.filename)
-            except Exception as e:
-                tkMessageBox.showerror("File Error", e)
-        fileio.filepathEntry.configure(validate="focusout",
-                                       validatecommand=onFilePathChanged)
-
-        def onClearButtonClicked(*args):
-            fileio.fileVar.set("")
-            self.filter.reset()
-        fileio.clearButton.configure(command=onClearButtonClicked)
+                    self.filter.delete_filter()
+                    dfilter.dvar.trace("w", onFilterSelection)
 
         # filter button
         def onFilterButtonChecked(*args):
-            self.filter.filter_(dfilter.filterCheck.get() == 1)
+            """Called when filterButton is changed"""
+            filterFLAG = dfilter.filterCheck.get() == 1
+            self.filter.filter_(filterFLAG)
         dfilter.filterButton.configure(command=onFilterButtonChecked)
 
         # linking slider modules to self.filter
@@ -315,7 +312,6 @@ def main():
     root = Tk()
     root.style = Style()
     root.style.theme_use("clam")
-    # root.geometry("250x150+300+300")
     app = KEQ(master=root)
     root.protocol("WM_DELETE_WINDOW", app.destructor)
     root.mainloop()
