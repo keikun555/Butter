@@ -11,7 +11,6 @@ __author__ = "Kei Imada"
 
 import numpy as np
 from numba import jit
-import time
 
 
 @jit(nopython=True, cache=True)
