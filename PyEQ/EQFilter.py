@@ -7,7 +7,7 @@ __all__ = ["EQFilter"]
 __version__ = "1.0"
 __author__ = "Kei Imada"
 
-from butterbase import *
+from butter import *
 import pyaudio as pa
 import numpy as np
 import threading
@@ -17,13 +17,17 @@ import wave
 
 class EQFilter(object):
     # TODO Privitize variables
-    def __init__(self):
-        """Constructor for the filter object used in KEQ"""
+    def __init__(self, channels=1, rate=44100, chunk=256):
+        """Constructor for the filter object used in KEQ
+        @params channels int number of channels for the audio (1 for mono, 2 for stereo)
+        @params rate int the sampling frequency rate in Hz
+        @params chunk int the number of frames per buffer
+        """
         self.__pyaudio = pa.PyAudio()
         self.__stream_format = (pa.paInt16, np.int16)
-        self.__stream_channels = 1
-        self.__stream_rate = 44100
-        self.__stream_chunk = 256
+        self.__stream_channels = channels
+        self.__stream_rate = rate
+        self.__stream_chunk = chunk
         self.delete_filter()
         self.__audio_stream_in = self.__pyaudio.open(format=self.__stream_format[0],
                                                      channels=self.__stream_channels,
@@ -84,6 +88,20 @@ class EQFilter(object):
         except Exception as e:
             self.__filter = None
             self.__filter_copy = None
+
+    def reload_streams(self, channels=None, rate=None, chunk=None):
+        """Reloads streams with desired constants"""
+        if channels != None:
+            self.__stream_channels = channels
+        if rate != None:
+            self.__stream_rate = rate
+        if chunk != None:
+            self.__stream_chunk = chunk
+        try:
+            self.__reload_audio_streams(self)
+        except Exception as e:
+            pass
+
 
     def delete_filter(self):
         """Resets the filter to None"""

@@ -9,29 +9,28 @@ from ttk import Frame, Label, Entry, Button, OptionMenu, Style, Checkbutton
 import tkFileDialog as filedialog
 import tkMessageBox
 import numpy as np
-import os
-from Filter import *
+from EQFilter import *
 
 
-class KEQ(object):
+class PyEQ(object):
 
     def __init__(self, master):
-        """The constructor for the KEQ app
-        @params master the root parent for the KEQ app
+        """The constructor for the PyEQ app
+        @params master the root parent for the PyEQ app
         """
         self.master = master
-        self.filter = EQFilter()
+        self.filter = EQFilter(channels=1, rate=44100, chunk=256)
         self.initUI()
 
     def destructor(self):
-        """Destructor for the KEQ app, closes open streams"""
+        """Destructor for the PyEQ app, closes open streams"""
         self.filter.reset()
         self.master.destroy()
 
     def initUI(self):
-        """Initializes everything needed for the KEQ app"""
+        """Initializes everything needed for the PyEQ app"""
 
-        self.master.title("KEQ")
+        self.master.title("PyEQ")
 
         # Initialize frames
         fileio = Frame(self.master)
@@ -69,7 +68,9 @@ class KEQ(object):
         record.recordButton = Button(
             record, text="record")
         record.rl2 = Label(record, text=" with sampling freq ")
-        record.samplingEntry = Entry(record)
+        record.freqVar = StringVar()
+        record.freqVar.set("44100")
+        record.samplingEntry = Entry(record, textvariable=record.freqVar)
         record.rl3 = Label(record, text=" Hz")
         record.rl1.grid(row=0, column=0)
         record.recordButton.grid(row=0, column=1)
@@ -99,7 +100,6 @@ class KEQ(object):
         dfilter.dropdown.grid(row=0, column=0)
         dfilter.filterButton.grid(row=0, column=2)
 
-
         def initSlider(master, text, mini, maxi, log=False):
             """Used in initializing the slider frames"""
             master.value = DoubleVar()
@@ -123,7 +123,8 @@ class KEQ(object):
 
             entry_value = StringVar()
             entry_value.set("%.2f" % mini)
-            entry = Entry(master, width=8, justify=CENTER, textvariable=entry_value)
+            entry = Entry(master, width=8, justify=CENTER,
+                          textvariable=entry_value)
             label = Label(master, text=text)
             slider.grid(row=1, column=0)
             entry.grid(row=2, column=0)
@@ -189,8 +190,6 @@ class KEQ(object):
             frame.scale.configure(state=DISABLED)
             frame.entry.configure(state=DISABLED)
 
-
-
         # link open file/clear file button to entry and put validation in entry
         def openButtonClicked(*args):
             """Called when openButton is pressed"""
@@ -204,14 +203,19 @@ class KEQ(object):
                 tkMessageBox.showerror("File Error", e)
         fileio.openButton.configure(command=openButtonClicked)
 
-        def onFilePathChanged(*args):
+        def validateFilePath(*args):
             """Called when filepathEntry is changed"""
             try:
                 self.filter.open(fileio.filename)
+                return True
             except Exception as e:
                 tkMessageBox.showerror("File Error", e)
+                return False
+        def onInvalidFilePath(*args):
+            fileio.clearButton.invoke()
         fileio.filepathEntry.configure(validate="focusout",
-                                       validatecommand=onFilePathChanged)
+                                       validatecommand=validateFilePath,
+                                       invalidcommand=onInvalidFilePath)
 
         def onClearButtonClicked(*args):
             """Called when clearButton is pressed"""
@@ -231,6 +235,20 @@ class KEQ(object):
                 record.recordButton.configure(text="record")
                 self.filter.record(self.recording)
                 record.recordButton.configure(command=onRecordButtonClicked)
+
+        # linking sampling frequency entry with filter
+        def validateSamplingEntry(*args):
+            try:
+                self.filter.reload_streams(rate=int(record.freqVar.get()))
+                return True
+            except ValueError:
+                return False
+
+        def onInvalidSamplingEntry(*args):
+            record.freqVar.set("44100")
+
+        record.samplingEntry.configure(
+            validate="focusout", validatecommand=validateSamplingEntry, invalidcommand=onInvalidSamplingEntry)
 
         # link filter type to sliders
         def onFilterSelection(*args):
@@ -252,7 +270,7 @@ class KEQ(object):
                 filter_rolloff = float(rolloff.entry.get())
                 filter_cutoff = float(cutoff.entry.get())
                 self.filter.reload_filter(
-                btype=chosen.lower(), rolloff=filter_rolloff, cutoff=filter_cutoff)
+                    btype=chosen.lower(), rolloff=filter_rolloff, cutoff=filter_cutoff)
             elif chosen in cutoff2:
                 rolloff.scale.configure(state=NORMAL)
                 rolloff.entry.configure(state=NORMAL)
@@ -269,8 +287,8 @@ class KEQ(object):
                 filter_lcutoff = float(lcutoff.entry.get())
                 filter_hcutoff = float(hcutoff.entry.get())
                 self.filter.reload_filter(
-                btype=chosen.lower(), rolloff=filter_rolloff,
-                cutoff1=filter_lcutoff, cutoff2=filter_hcutoff)
+                    btype=chosen.lower(), rolloff=filter_rolloff,
+                    cutoff1=filter_lcutoff, cutoff2=filter_hcutoff)
             else:
                 for frame in sliderFrames:
                     frame.scale.configure(state=DISABLED)
@@ -312,7 +330,7 @@ def main():
     root = Tk()
     root.style = Style()
     root.style.theme_use("clam")
-    app = KEQ(master=root)
+    app = PyEQ(master=root)
     root.protocol("WM_DELETE_WINDOW", app.destructor)
     root.mainloop()
 

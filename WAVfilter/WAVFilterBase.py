@@ -3,21 +3,24 @@ Kei Imada
 20170725
 Base code for WAVfilter
 """
-from filters.butterbase2 import Butter
+__all__ = ["open"]
+
+from butter import *
 import wave
 import numpy as np
 
 import __builtin__
 
-__all__ = ["open"]
-
 
 def open(f):
-    return WAVfilter(f)
+    return WAVFilter(f)
 
 
-class WAVfilter(object):
+class WAVFilter(object):
     def __init__(self, f):
+        """Constructor for the WAVfilter class
+        @params f the filename to read in
+        """
         self._file = wave.open(f, "r")
         self._fparams = self._file.getparams()
         if self._fparams[1] == 1:
@@ -25,7 +28,8 @@ class WAVfilter(object):
             self._tp = np.uint8
         else:
             self._tp = np.int16
-        data = np.fromstring(self._file.readframes(self._file.getnframes()), dtype=self._tp).tolist()
+        data = np.fromstring(self._file.readframes(
+            self._file.getnframes()), dtype=self._tp).tolist()
         if self._fparams[0] == 1:
             self._stereo = False
             self._mono = data
@@ -39,10 +43,12 @@ class WAVfilter(object):
         #     print self._amparray[i] - init
         # print type(init)
         self._filterSet = False
+
     def __del__(self):
         self._file.close()
+
     def set_filter(self, btype="lowpass", cutoff=None, cutoff1=None, cutoff2=None, rolloff=48):
-        """
+        """Sets the filter
         @param btype string type of filter, default lowpass
             lowpass
             highpass
@@ -67,11 +73,17 @@ class WAVfilter(object):
             @param cutoff2 float measured in Hz
             cutoff1 =< cutoff2
         """
-        self._filter = Butter(btype=btype, cutoff=cutoff, cutoff1=cutoff1, cutoff2=cutoff2, rolloff=rolloff, sampling=self._file.getframerate())
+        self._filter = Butter(btype=btype, cutoff=cutoff, cutoff1=cutoff1,
+                              cutoff2=cutoff2, rolloff=rolloff, sampling=self._file.getframerate())
         if self._stereo:
-            self._filter2 = Butter(btype=btype, cutoff=cutoff, cutoff1=cutoff1, cutoff2=cutoff2, rolloff=rolloff, sampling=self._file.getframerate())
+            self._filter2 = Butter(btype=btype, cutoff=cutoff, cutoff1=cutoff1,
+                                   cutoff2=cutoff2, rolloff=rolloff, sampling=self._file.getframerate())
         self._filterSet = True
+
     def write(self, f):
+        """Filter data and write to file
+        @params f filepath to write the file
+        """
         if not self._filterSet:
             if self._stereo:
                 output = [None for i in range(len(fleft) + len(fright))]
@@ -80,7 +92,7 @@ class WAVfilter(object):
             else:
                 output = self._mono
         elif self._stereo:
-            #TODO use multithreading to do concurrent filtering with fleft and fright
+            # TODO use multithreading to do concurrent filtering with fleft and fright
             fleft = self._filter.send(self._left)
             fright = self._filter2.send(self._right)
             output = [None for i in range(len(fleft) + len(fright))]

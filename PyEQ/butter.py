@@ -150,20 +150,18 @@ class Butter(object):
             "bandstop": self.__bandstop_filter_variables
         }[btype]()
 
-    def get_output(self):
-        """Returns accumulated output values
+    def filtfilt(self):
+        """Returns accumulated output values with forward-backwards filtering
         @return list of float/int accumulated output values, filtered through forward-backward filtering
         """
         tempfrequencylist = [
-            [0 for i in range(5
-                              )] for j in range(self.N / 2 + 1)]
+            [0 for i in range(5)] for j in range(self.N / 2 + 1)]
         data = self.output[:]
         data.reverse()
-        output = []
-        for amplitude in data:
-            output.append(self.__filterHelper5(amplitude, tempfrequencylist))
-        output.reverse()
-        return output
+        for i in range(len(data)):
+            data[i] = __filterHelper(data[i], tempfrequencylist)
+        data.reverse()
+        return data
 
     def send(self, data):
         """Send data to Butterworth filter
