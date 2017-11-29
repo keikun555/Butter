@@ -67,7 +67,6 @@ class EQFilter(object):
                                  self.cutoff1, self.cutoff2,
                                  self.rolloff, self.sampling)
         except Exception as e:
-            print e
             self.filter = None
 
     def delete_filter(self):
@@ -86,6 +85,7 @@ class EQFilter(object):
         self.record_check = boolean
         if boolean and not self.record_thread.isAlive():
             self.reset()
+            self.record_check = boolean
             self.record_thread.start()
         elif not boolean and self.record_thread.isAlive():
             self.record_thread.join()
@@ -160,6 +160,7 @@ class EQFilter(object):
                     playQ.put(
                         (np.array(filteredChunk).astype(np.int16)).tostring())
                 else:
+                    print "no filter"
                     playQ.put(chunk)
 
     def __play_process(self, playQ, filterQ, rawQ):
