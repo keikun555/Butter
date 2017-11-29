@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 *.pyc
+=======
+Courtesy of jwg4's
+https://github.com/github/gitignore/blob/master/Python.gitignore
+
+>>>>>>> 4adc14bc2fff1c1eb4bf9ac8fd30fb949723d1af
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -24,7 +30,10 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+<<<<<<< HEAD
 MANIFEST
+=======
+>>>>>>> 4adc14bc2fff1c1eb4bf9ac8fd30fb949723d1af
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -53,8 +62,11 @@ coverage.xml
 
 # Django stuff:
 *.log
+<<<<<<< HEAD
 .static_storage/
 .media/
+=======
+>>>>>>> 4adc14bc2fff1c1eb4bf9ac8fd30fb949723d1af
 local_settings.py
 
 # Flask stuff:
@@ -88,8 +100,11 @@ celerybeat-schedule
 env/
 venv/
 ENV/
+<<<<<<< HEAD
 env.bak/
 venv.bak/
+=======
+>>>>>>> 4adc14bc2fff1c1eb4bf9ac8fd30fb949723d1af
 
 # Spyder project settings
 .spyderproject

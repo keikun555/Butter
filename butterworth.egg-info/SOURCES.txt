@@ -1,0 +1,9 @@
+README.rst
+setup.py
+butterworth/__init__.py
+butterworth/butter.py
+butterworth.egg-info/PKG-INFO
+butterworth.egg-info/SOURCES.txt
+butterworth.egg-info/dependency_links.txt
+butterworth.egg-info/requires.txt
+butterworth.egg-info/top_level.txt
