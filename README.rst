@@ -11,7 +11,7 @@ Basic Usage
 ===========
 Importing the Butter module::
 
-  from butter import Butter
+  from butterworth import Butter
 
 Creating the Butter instance for a lowpass butterworth filter with cutoff frequency 1000Hz and rolloff frequency 48Hz for data taken with sampling frequency 44100::
 
